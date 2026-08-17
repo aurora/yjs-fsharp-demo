@@ -50,6 +50,16 @@ Service an — teils CRDT-basiert, teils mit einfacheren Konsistenzmodellen. Rel
 Kompromiss, wenn der eigene Betrieb der Infrastruktur (Server, Skalierung, Persistenz) vermieden
 werden soll, bringt dafür eine Vendor-Abhängigkeit mit.
 
+> **Randnotiz, Stand der Recherche**: es gibt ein sehr junges NuGet-Paket namens
+> [`Crdt`](https://github.com/marcschier/crdt), dessen Beschreibung tatsächlich dieselben
+> Sequenz-Algorithmen-Familien wie Yjs auflistet (u.a. `Rga<T>`, `YataSequence<T>`,
+> `WootSequence<T>`) — auf dem Papier also eine native .NET-CRDT-Text-Implementierung. In der
+> Praxis: 1 GitHub-Stern, 0 Forks, ein einzelner Autor, erste Version vor wenigen Wochen
+> veröffentlicht, keine erkennbare Produktionsnutzung. Erwähnenswert als "das gibt es
+> jetzt zumindest dem Namen nach", aber (noch) keine Alternative, der man denselben
+> Vertrauensvorschuss geben könnte wie einer zehn Jahre lang produktiv gehärteten Bibliothek —
+> siehe auch [Fallstricke #6](03-fallstricke.md#6-die-fablejs-grenze-wo-typsicherheit-aufhört).
+
 ## Fazit
 
 Für die konkrete Zielsetzung dieses Projekts — Echtzeit-UI-Kollaboration im Browser mit geteilten

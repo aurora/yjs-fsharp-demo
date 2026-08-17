@@ -143,6 +143,30 @@ JS-Editor-Ökosystem (`y-prosemirror`, `y-codemirror`, Tiptap, …), das die JS-
 nicht Ycs' C#-API. Das Binärprotokoll bliebe dabei immerhin kompatibel — Blazor- und
 JS-Clients könnten sich laut Ycs' eigener Beschreibung denselben Dokumentzustand teilen.
 
+**Gibt es eine Bibliothek, die das Problem stattdessen direkt löst?** Kein fertiges
+`Fable.Yjs`- oder `Glutinum.Yjs`-Paket existiert (Stand der Recherche). Es gibt aber zwei
+Generatoren, die aus TypeScripts eigenen, gepflegten `.d.ts`-Typdefinitionen (die Yjs mitliefert)
+automatisch F#-Bindings erzeugen können: **[ts2fable](https://www.npmjs.com/package/ts2fable)**
+(älter, seit ~5 Jahren nicht mehr aktualisiert, "manuelles Nacharbeiten meist nötig" laut eigener
+Beschreibung) und **[Glutinum](https://fable.io/blog/2024/2024-01-01-Glutinum_a_new_era.html)**
+(neuer, aktiv entwickelt, aber selbst als "früher Entwicklungsstand" bezeichnet — nicht die
+komplette TypeScript-Syntax wird unterstützt). Damit ließe sich die ungetypte Fläche deutlich
+verkleinern (Methodennamen/Argumente/Rückgabetypen kämen dann aus Yjs' echten Typdefinitionen,
+nicht aus frei getippten Strings) — aber beide Tools verlangen selbst Nacharbeit von Hand, keins
+verspricht "generieren und fertig". Soweit ersichtlich hat das bisher niemand für Yjs konkret
+gemacht und veröffentlicht.
+
+Der andere denkbare Weg — eine CRDT-Bibliothek, die *nativ* in F# geschrieben ist (keine
+JS-Bindings, sondern eigenständiger, von Fable ganz normal übersetzter Code) — existiert nicht
+in ausgereifter Form. Wenig überraschend: ein textfähiger CRDT-Algorithmus auf YATA/RGA-Niveau
+ist genau der Teil, an dem Yjs und Automerge jahrelang gearbeitet haben (siehe
+[Kapitel 1](01-crdt-und-yjs.md#warum-ist-das-schwer-selbst-zu-bauen)) — das nativ in F#
+nachzubauen wäre kein Bindings-Projekt mehr, sondern dieselbe Forschungsarbeit von vorne.
+
+Fazit: die Fläche lässt sich mit Werkzeugen wie Glutinum verkleinern, aber ohne eigenes
+Zusatzprojekt nicht auf null bringen — die oben beschriebene Eindämmung (opake Typen + getypte
+Wrapper-Funktionen) ist praktisch nah dran an dem, was sich ohne diese Mehrarbeit erreichen lässt.
+
 ## Was man sonst vorher wissen sollte
 
 - **Awareness-Protokoll**: Yjs bringt mit `y-protocols/awareness` ein offizielles,

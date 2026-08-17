@@ -135,6 +135,17 @@ an derselben Note/demselben Textabschnitt zusammengeführt werden sollen — das
 selbst entworfen und implementiert werden (im Kern: entweder OT oder eine CRDT, s.o.), und zwar
 mit derselben Sorgfalt, die in Yjs' YATA-Algorithmus über Jahre eingeflossen ist.
 
+Das gilt selbst dort, wo Akka(.NET) bereits CRDTs mitbringt:
+**[`Akka.DistributedData`](https://getakka.net/articles/clustering/distributed-data.html)**
+liefert `GCounter`, `PNCounter`, `GSet`, `ORSet`, `ORDictionary`, `LWWRegister`,
+`LWWDictionary` — Zähler, Mengen, Register, Maps. **Kein Sequenz-/Text-Typ.** Die Doku
+positioniert das Modul explizit für hochverfügbare, verteilte Key-Value-Stores in
+Cluster-Backends, nicht für Dokument-Kollaboration. Für einen Textkörper bliebe damit
+bestenfalls ein `LWWRegister` übrig — "letzter Schreiber gewinnt, ganzer String" — exakt die
+grobe Semantik, die `Y.Text` (siehe [Architektur-Muster](02-architektur-muster.md)) gerade
+vermeidet. Akka *hat* also CRDTs, nur nicht die eine Sorte, die für kollaboratives
+Text-Editieren gebraucht wird.
+
 Dazu kommt ein praktischer Punkt: Actor-Frameworks dieser Art laufen serverseitig (JVM/.NET).
 Es gibt keine praxistaugliche Variante, dieselben Actors direkt im Browser-Tab laufen zu lassen
 und dort Peer-to-Peer oder Offline zu arbeiten — der Client bräuchte also ohnehin eine eigene,
