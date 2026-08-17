@@ -1,0 +1,56 @@
+<!doctype html>
+<html lang="de">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Yjs × F# Collaboration Demo</title>
+  <link rel="stylesheet" href="styles.css" />
+</head>
+<body>
+  <div id="app">
+    <header id="topbar">
+      <div class="brand">
+        <span class="brand-dot"></span>
+        Yjs × F# Collab-Prototyp
+      </div>
+
+      <input id="my-name" class="name-input" maxlength="16" title="Dein Anzeigename" />
+
+      <div id="presence-bar" title="Wer ist online - Klick = folgen"></div>
+
+      <div id="toolbar">
+        <span class="toolbar-label">Sticky hinzufügen:</span>
+        <button class="swatch swatch-yellow" data-color="yellow" title="Gelb"></button>
+        <button class="swatch swatch-pink" data-color="pink" title="Pink"></button>
+        <button class="swatch swatch-blue" data-color="blue" title="Blau"></button>
+        <button class="swatch swatch-green" data-color="green" title="Grün"></button>
+      </div>
+
+      <div class="spacer"></div>
+
+      <div id="conn-status" class="conn-status">
+        <span class="conn-dot"></span>
+        <span class="conn-text">verbinde…</span>
+      </div>
+
+      <button id="debug-toggle" class="ghost-btn">Debug-Log</button>
+    </header>
+
+    <main id="canvas-wrap">
+      <canvas id="board"></canvas>
+      <textarea id="edit-overlay" spellcheck="false"></textarea>
+      <div id="hint">Doppelklick auf eine Note zum Bearbeiten · Mausrad = Zoom · Ziehen auf leerer Fläche = Pan</div>
+    </main>
+
+    <aside id="debug-panel">
+      <div class="debug-header">
+        <strong>Nachrichtenfluss</strong>
+        <span class="debug-sub">jede Zeile = 1 WebSocket-Frame</span>
+      </div>
+      <div id="debug-log"></div>
+    </aside>
+  </div>
+
+  <script type="module" src="js/Program.js"></script>
+</body>
+</html>

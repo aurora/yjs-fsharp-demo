@@ -1,0 +1,27 @@
+﻿<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <OutputType>Exe</OutputType>
+    <TargetFramework>net10.0</TargetFramework>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <Compile Include="Types.fs" />
+    <Compile Include="Awareness.fs" />
+    <Compile Include="Interop/Yjs.fs" />
+    <Compile Include="Interop/Ws.fs" />
+    <Compile Include="Doc.fs" />
+    <Compile Include="Camera.fs" />
+    <Compile Include="Canvas.fs" />
+    <Compile Include="State.fs" />
+    <Compile Include="View.fs" />
+    <Compile Include="Program.fs" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <PackageReference Include="Fable.Browser.Dom" Version="2.20.0" />
+    <PackageReference Include="Fable.Core" Version="5.2.0" />
+    <PackageReference Include="Fable.Elmish" Version="5.0.2" />
+  </ItemGroup>
+
+</Project>
