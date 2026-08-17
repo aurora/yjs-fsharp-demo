@@ -21,8 +21,9 @@ lauffähigen Prototyp im Repo-Wurzelverzeichnis ([../README.md](../README.md)) a
    geteilte Cursor.
 
 3. **[Fallstricke & Lessons Learned](03-fallstricke.md)**
-   Was beim Einbau typischerweise schiefgeht (inkl. zweier echter Bugs aus diesem Projekt),
-   und was man vorher wissen sollte, bevor man loslegt.
+   Was beim Einbau typischerweise schiefgeht (inkl. echter Bugs aus diesem Projekt), wo die
+   Fable↔JS-Grenze Typsicherheit kostet und was das für YDotNet/Ycs bedeutet, und was man
+   vorher wissen sollte, bevor man loslegt.
 
 4. **[Skalierung](04-skalierung.md)**
    Was bei mehr Elementen/Usern gar kein Problem ist, wo es eng wird, Lösungsansätze —

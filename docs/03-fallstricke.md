@@ -89,6 +89,60 @@ zeigt sich erst beim JS-Kompilierschritt, als kryptischer "Funktion X ist nicht 
 Laufzeit im Browser. Konkret in diesem Projekt: `Elmish` (nur DLLs) vs. `Fable.Elmish` (mit
 Quelltext) — siehe [Client.fsproj](../client/Client.fsproj).
 
+## 6. Die Fable↔JS-Grenze: wo Typsicherheit aufhört
+
+Ein oft gehörter Einwand gegen "Yjs unter F#/Fable": Yjs ist reines JavaScript, es gibt kein
+gepflegtes, typisiertes Fable-Binding-Paket dafür (anders als z.B. `Fable.Browser.Dom` für
+DOM-APIs) — man muss die Anbindung selbst schreiben, und die ist zwangsläufig **dynamisch**:
+`(map :> obj)?get(key)` statt eines echten `YMap.Get(key): 'T`. Der F#-Compiler prüft an dieser
+Stelle nichts — weder Methodennamen noch Argumentanzahl noch Rückgabetyp.
+
+Das ist kein theoretischer Einwand — in diesem Projekt kam es genau in dieser Form zweimal vor:
+
+- `[<Global>] let WebSocketCtor: obj = jsNative` (gemeint war der globale `WebSocket`) —
+  `dotnet build` lief grün durch, der Fehler ("WebSocketCtor is not defined") zeigte sich erst
+  beim Ausführen im Browser, weil Fable ohne expliziten Namen den F#-Bezeichner selbst als
+  JS-Namen genommen hat. Siehe [Interop/Ws.fs](../client/Interop/Ws.fs).
+- Der `Elmish`/`Fable.Elmish`-Fallstrick aus [Punkt 5](#5-fabledotnet-spezifisch-gleich-aussehende-nuget-pakete-sind-nicht-gleich)
+  oben ist strukturell derselbe Fehlertyp: im .NET-Build unsichtbar, erst im Browser sichtbar.
+
+**Wichtig zur Einordnung**: das ist kein Yjs-spezifisches Problem, sondern der Preis für *jede*
+nicht-Fable-native JS-Abhängigkeit — dieselbe dynamische Anbindung bräuchte jede andere
+JS-Bibliothek unter Fable auch. "Yjs ist JavaScript" klingt nach einem Yjs-Nachteil, ist aber
+eigentlich ein Fable-Nachteil, der bei Yjs genauso zuschlägt wie bei jeder anderen
+JS-Abhängigkeit.
+
+**Wie stark schlägt das in der Praxis durch?** In diesem Projekt: die tatsächlich ungetypte
+Fläche ist eine einzige Datei mit rund 100 Zeilen ([Interop/Yjs.fs](../client/Interop/Yjs.fs)),
+die seit ihrer Erstellung kaum verändert wurde. Alles, was darauf aufbaut
+([Doc.fs](../client/Doc.fs) aufwärts, der Großteil der Anwendung) ist vollständig typisiertes
+F# und sieht nie einen `?`-Operator — über opake Typen (`YMap`, `YText`, `YArray`, …) plus
+getypte Funktionssignaturen darum herum bleibt die Ungetyptheit auf den jeweils einzeiligen
+Funktionskörper begrenzt, nicht auf das, was aufrufender Code sieht.
+
+**Die berechtigtere, schärfere Version des Einwands**: wenn der Hauptgrund für F# "durchgängige
+Typsicherheit bis in die Sync-Engine hinein" ist, bekommt man das mit Yjs-via-Fable tatsächlich
+nicht — an genau der fachlich wichtigsten Stelle verlässt man sich auf handgeschriebenen, vom
+Compiler ungeprüften Code. Die daraus folgende Konsequenz ist aber nicht "dann lieber selbst
+bauen" (siehe die Einordnung gegenüber Eigenbauten in [Kapitel 1](01-crdt-und-yjs.md#neutrale-einordnung-yjs-vs-eigenentwickelte-zb-aktorbasierte-lösung) —
+das wäre strikt schlechter, weder Typsicherheit noch Yjs' Reife), sondern eher die Frage, ob
+Fable für einen JS-lastigen Client überhaupt das richtige Werkzeug ist, oder ob man das Frontend
+lieber direkt in TypeScript schreibt und F# nur serverseitig einsetzt.
+
+**Helfen YDotNet/Ycs hier?** Nein — die lösen ein anderes Problem an einer anderen Stelle (siehe
+[Skalierung](04-skalierung.md#server-wird-yjs-fähig-ydotnet--ycs)): serverseitige
+Dokument-Kompaktierung, nicht Client-Typsicherheit. Der Grund liegt im Ausführungsort: die
+CRDT-Logik, die die UI antreibt, muss zwangsläufig im Browser laufen — YDotNet kann das
+grundsätzlich nie (native Rust-Abhängigkeit, Browser laden keine nativen OS-Binaries). Ycs
+(reines verwaltetes C#) könnte theoretisch im Browser laufen, aber nur über **Blazor
+WebAssembly statt Fable** — ein fundamentaler Technologiewechsel, kein kleiner Zusatz: man
+verliert Fables schlankes JS-Compile-Ziel gegen Blazors WASM-gehostete .NET-Laufzeit, man setzt
+mit Ycs (vor Version 1.0, noch ohne `Y.Xml`) die primäre statt eine ergänzende Sync-Engine auf
+eine deutlich unreifere Bibliothek, und man verliert die Kompatibilität zum großen
+JS-Editor-Ökosystem (`y-prosemirror`, `y-codemirror`, Tiptap, …), das die JS-`yjs`-API erwartet,
+nicht Ycs' C#-API. Das Binärprotokoll bliebe dabei immerhin kompatibel — Blazor- und
+JS-Clients könnten sich laut Ycs' eigener Beschreibung denselben Dokumentzustand teilen.
+
 ## Was man sonst vorher wissen sollte
 
 - **Awareness-Protokoll**: Yjs bringt mit `y-protocols/awareness` ein offizielles,

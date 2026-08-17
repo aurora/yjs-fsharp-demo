@@ -66,6 +66,11 @@ sollte, aber selten sofort braucht.
 
 ## Server wird Yjs-fähig: YDotNet / Ycs
 
+> Betrifft nur den **Server**. Für die Frage, ob diese beiden auch dem Client hin zu mehr
+> Typsicherheit gegenüber der JS-Yjs-Bibliothek verhelfen können, siehe
+> [Fallstricke #6](03-fallstricke.md#6-die-fablejs-grenze-wo-typsicherheit-aufhört) — kurze
+> Antwort: nicht ohne einen kompletten Wechsel von Fable zu Blazor WebAssembly.
+
 Beide Optionen lösen das Log-Wachstum-Problem "richtig": der Server hält selbst ein echtes
 Dokument, kann eingehende Updates darin mergen und jederzeit einen kompakten Gesamtzustand
 (`EncodeStateAsUpdate`) statt der vollen Historie ausliefern. Neu Beitretende laden dann
