@@ -48,6 +48,38 @@ RGA-artigen (Replicated Growable Array) Sequenz-CRDTs. Das ist der Teil, der bei
 Freitext-Kollaboration am meisten Sorgfalt braucht: naive Ansätze produzieren bei gleichzeitigem
 Tippen an derselben Stelle leicht vertauschte oder duplizierte Zeichen.
 
+## Transport: das Provider-Konzept — läuft das zwingend über einen Server?
+
+Nein. `Y.Doc` und die CRDT-Typen wissen selbst nichts über Netzwerk — sie feuern nur ein
+`update`-Event mit den Änderungs-Bytes und können beliebige eingehende Updates per
+`applyUpdate` entgegennehmen. **Wie** diese Bytes von A nach B kommen, ist bei Yjs bewusst
+ausgelagert in austauschbare **Provider**, die sich an dieses Event andocken. Offiziell
+gepflegt/dokumentiert gibt es u.a.:
+
+- **`y-websocket`** — Client-Server, das Muster aus diesem Prototyp (Yjs liefert dafür eine
+  Node-Referenzimplementierung; [Rooms.fs](../server/Rooms.fs) ist die F#-Variante desselben
+  Prinzips).
+- **`y-webrtc`** — echtes Peer-to-Peer. Dokument-Updates fließen direkt zwischen den Browsern,
+  kein Server sieht die Nutzdaten. WebRTC selbst braucht trotzdem einen minimalen
+  "Signaling"-Kanal, um zwei Peers überhaupt erst zueinander zu finden (Verbindungsdaten
+  austauschen) — das ist eine WebRTC-Grundeigenschaft, keine Yjs-Beschränkung, und dieser
+  Signaling-Server muss das Dokument ebenso wenig verstehen wie ein `y-websocket`-Relay.
+- **`y-indexeddb`** — kein Netzwerk-Provider, sondern lokale Persistenz im Browser
+  (Offline-Fähigkeit, schnelles Neuladen). Mehrere Provider können gleichzeitig an demselben
+  `Y.Doc` hängen, da jeder nur auf dasselbe `update`-Event lauscht — üblich ist z.B.
+  `y-indexeddb` (lokal) **plus** `y-websocket` (Server-Sync) gleichzeitig.
+
+**In der Praxis** setzen die meisten produktiven Yjs-Systeme trotzdem auf Client-Server statt
+WebRTC-Mesh — JupyterLab, Hocuspocus/Tiptap und y-sweet (alle unten genannt) eingeschlossen.
+Gründe: Persistenz (jemand muss den Stand halten, wenn gerade niemand online ist), einfacheres
+NAT-Traversal, und Mesh-P2P skaliert mit wachsender Personenzahl schlechter (potenziell jeder
+mit jedem verbunden). WebRTC/P2P wird vor allem dann interessant, wenn explizit kein Server die
+Nutzdaten sehen soll (Datenschutz, Kosten, reine LAN-Szenarien).
+
+Dieser Prototyp verwendet Client-Server — u.a. weil das genau den Zweck erfüllt, jedes Byte auf
+dem Server mitverfolgen zu können (siehe Debug-Panel); bei echtem P2P gäbe es serverseitig
+nichts zu beobachten.
+
 ## Warum ist das schwer, selbst zu bauen?
 
 Verteilen von Änderungen (Netzwerk, WebSockets, Broadcast) ist der leichte Teil — das kann jedes

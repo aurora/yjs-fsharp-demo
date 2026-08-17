@@ -10,9 +10,10 @@ lauffähigen Prototyp im Repo-Wurzelverzeichnis ([../README.md](../README.md)) a
 ## Inhalt
 
 1. **[CRDT & Yjs — Grundlagen](01-crdt-und-yjs.md)**
-   Was ist ein CRDT, wie löst Yjs das Merge-Problem, wie reif/verbreitet ist die Bibliothek
-   wirklich, und eine neutrale Einordnung gegenüber eigenentwickelten (z.B. aktorbasierten)
-   Lösungen.
+   Was ist ein CRDT, wie löst Yjs das Merge-Problem, läuft das zwingend über einen Server
+   (Provider-Konzept: `y-websocket` vs. `y-webrtc` vs. `y-indexeddb`), wie reif/verbreitet ist
+   die Bibliothek wirklich, und eine neutrale Einordnung gegenüber eigenentwickelten (z.B.
+   aktorbasierten) Lösungen.
 
 2. **[Architektur-Muster](02-architektur-muster.md)**
    Die übertragbaren Bausteine: Zwei-Kanal-Prinzip (Dokument vs. Awareness), der Server als

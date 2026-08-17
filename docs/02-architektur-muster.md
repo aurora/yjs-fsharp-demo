@@ -111,3 +111,75 @@ Damit sieht jeder Client den Cursor der anderen an der fachlich richtigen Stelle
 Koordinatensystem — unabhängig von Fenstergröße oder Zoom. "Follow"-Modus ist dann nur noch:
 die eigene Kamera kontinuierlich auf die zuletzt empfangene Weltkoordinate der gefolgten Person
 zentrieren. Siehe [Camera.fs](../client/Camera.fs).
+
+## 6. Mehrere UI-Oberflächen, ein Dokument
+
+Nichts an den bisherigen Mustern ist auf "ein Canvas" beschränkt. Eine komplexere Anwendung
+— z.B. ein Canvas *plus* ein zeilenbasierter Property-Editor (Label/Type/Value, verschachtelt,
+im Prinzip ein JSON-Editor) *plus* eingefügte Bilder *plus* Verbindungspfeile zwischen Objekten —
+braucht dafür kein zweites Muster. Jede UI-Oberfläche ist einfach eine weitere Projektion
+desselben Dokuments (siehe [Punkt 4](#4-integration-in-ein-ui-framework-mvu-redux-mobx-)), und
+alle Mutationen aus jeder dieser Oberflächen laufen gegen dieselben geteilten Typen. Konkret:
+
+- **Property-Editor**: dieselbe `Y.Map` einer Note, nur rekursiv als Zeilen statt als Box auf
+  dem Canvas dargestellt. Ein `Y.Map`-Feld wird zur Zeile, ein verschachtelter `Y.Map`/`Y.Array`-
+  Wert zur aufklappbaren Unterzeile. Nicht jedes Feld braucht dabei `Y.Text` — kurze Skalare
+  (Zahl, Bool, Typ-Enum) einfach als Rohwert in der `Y.Map` ablegen, das ergibt automatisch
+  kausal-korrektes "letzter Schreiber gewinnt" pro Feld. `Y.Text` lohnt sich nur dort, wo
+  wirklich zeichengenaues gleichzeitiges Tippen gewünscht ist (Freitext-Beschreibungen).
+  Praxistipp: den Change-Observer nur auf der Map des *aktuell selektierten* Objekts
+  registrieren, nicht auf dem ganzen Dokument — sonst rendert der Editor bei jeder Änderung
+  irgendwo neu (siehe [Fallstricke #2](03-fallstricke.md#2-hochfrequenter-flüchtiger-state-treibt-teure-ui-neuaufbauten)).
+- **Binäre Assets (Screenshots etc.)**: gehören nicht ins CRDT-Dokument. Bild separat hochladen
+  (normaler HTTP-Upload, mit Yjs nicht verknüpft), nur die resultierende URL/ID landet als
+  String-Feld in einer ganz normalen `Y.Map` (`{ type: "image", url, x, y, w, h }`). Das Bild
+  selbst wird nie kollaborativ bearbeitet, nur seine Platzierung — und die ist wieder dasselbe
+  Muster wie bei jedem anderen Element.
+- **Ein-/ausblendbare Elemente**: ein weiteres Feld (`visible: bool`) auf derselben Map,
+  direkt gemutet, beim Zeichnen bei Bedarf übersprungen. Kein neues Muster.
+- **Verbindungen zwischen Objekten (Pfeile)**: eine Verbindung ist selbst ein Objekt mit
+  eigener `Y.Map` (eigene ID, `fromId`, `toId`, ggf. Stil), typischerweise in einer eigenen
+  Dokument-Wurzel (`doc.getMap("connectors")`). Referenziert wird **per ID**, nicht indem das
+  verbundene Objekt eingebettet wird — dieselbe Technik wie bei der `noteOrder`-Liste im
+  Prototyp, die auch nur IDs hält.
+
+### Die Faustregel: Nutzerabsicht wird synchronisiert, Berechnungen werden abgeleitet
+
+Das ist die Regel, die sich durch alle vier Beispiele oben zieht, und die man auf jede neue
+UI-Oberfläche anwenden kann: **alles, was eine echte Entscheidung eines Nutzers ist, gehört ins
+Dokument. Alles, was sich aus bereits synchronisierten Daten berechnen lässt, gehört nicht
+hinein — es wird bei jedem Rendern neu abgeleitet.**
+
+Bei Pfeilen zeigt sich das besonders deutlich: *dass* Note A mit Note B verbunden ist, ist eine
+Entscheidung (→ gespeichert). *Wo genau* die Linie dazwischen verläuft, ist bei einem Tool mit
+automatischem Routing (Hindernisse umgehen, keine Überlappung mit anderen Objekten) dagegen
+keine Entscheidung, sondern eine Berechnung aus bereits bekannten Daten (Positionen/Größen aller
+Objekte + welche zwei IDs verbunden sind) — sie muss **gar nicht synchronisiert werden**. Jeder
+Client führt denselben Routing-Algorithmus lokal gegen dieselben (synchronisierten) Eingabedaten
+aus und kommt zwangsläufig zum selben Ergebnis, ganz ohne dass die berechnete Route je über das
+Netzwerk müsste.
+
+Zwei Dinge sind dabei zu beachten:
+
+- **Der Algorithmus muss deterministisch sein** — reine Funktion der Eingabedaten, kein Zufall,
+  kein externer mutabler Zustand. Die häufigste Falle: wenn der Algorithmus bei Gleichstand
+  (z.B. zwei gleich kurze Routen) die Iterationsreihenfolge einer Map/eines Arrays als
+  Tie-Breaker nutzt, und diese Reihenfolge nicht explizit definiert ist, können zwei Clients in
+  seltenen Fällen unterschiedliche, beide gültige Routen berechnen (kein Datenfehler, nur ein
+  kurzzeitiger visueller Unterschied bis zum nächsten Recompute) — vermeidbar, indem
+  Hindernislisten für die Berechnung explizit nach etwas Stabilem sortiert werden (z.B. ID),
+  statt sich auf zufällige Map-Iterationsreihenfolge zu verlassen.
+- **Ergebnis cachen**: da die Route sonst bei jedem Rendern neu berechnet würde (z.B. während
+  eine verbundene Note gezogen wird, mit bis zu ~25 Positions-Updates/Sekunde bei gedrosseltem
+  Netzwerk-Commit, siehe [Fallstricke #3](03-fallstricke.md#3-netzwerk-throttling-vs-lokale-reaktivität)) —
+  Route nur neu berechnen, wenn sich einer der beiden Endpunkte oder ein relevantes Hindernis
+  tatsächlich bewegt hat, nicht bei jedem Frame pauschal.
+
+Würde das Tool später erlauben, eine automatisch berechnete Route manuell zu verbiegen (einen
+Wegpunkt von Hand verschieben), wäre genau dieser eine Wegpunkt wieder echte Nutzerabsicht und
+müsste gespeichert werden — der Rest der Route bliebe trotzdem abgeleitet.
+
+Der entscheidende Punkt dahinter: nichts davon ändert etwas am Server. Er bleibt exakt so
+"dumm" wie in [Punkt 2](#2-der-server-als-dummer-relay--log) beschrieben, egal wie viele
+Dokument-Wurzeln oder UI-Oberflächen der Client anlegt. Die Komplexität einer wachsenden UI ist
+vollständig eine Client-seitige Datenmodellierungsfrage.
