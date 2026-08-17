@@ -24,6 +24,15 @@ let private doc = createDoc ()
 let private notesMap = getMap "notes" doc
 let private noteOrder = getArray "noteOrder" doc
 
+/// Scoped to the whole board (all notes, including their nested x/y/color/text fields, plus
+/// their order) - Ctrl+Z undoes the single most recent LOCAL change anywhere on the board, no
+/// matter what other users did in the meantime. That last guarantee is not extra work: it's
+/// the same origin mechanism as onLocalUpdate/applyRemoteUpdate below - by default an
+/// UndoManager only tracks transactions with no explicit origin, which is exactly the
+/// complement of the `remoteOrigin`-tagged ones, so a remote peer's changes are structurally
+/// invisible to it.
+let private undoManager = newUndoManager [| box notesMap; box noteOrder |]
+
 /// My own identity for this session = Yjs's own randomly assigned doc.clientID.
 /// Reusing it means we don't need a second id scheme for presence/awareness.
 let myClientId: ClientId = (doc :> obj)?clientID
@@ -146,6 +155,21 @@ let editNoteText (id: string) (oldText: string) (newText': string) : unit =
 
         log Out "note-edit" $"{id.Substring(0, 6)} -{removedLen}/+{insertedText.Length} chars @ {prefix}"
     | None -> ()
+
+// -- undo/redo --------------------------------------------------------------------
+
+let undo () : unit =
+    if Yjs.canUndo undoManager then
+        log Out "undo" "reverting last local change"
+        Yjs.undo undoManager
+
+let redo () : unit =
+    if Yjs.canRedo undoManager then
+        log Out "redo" "reapplying last undone change"
+        Yjs.redo undoManager
+
+let canUndo () : bool = Yjs.canUndo undoManager
+let canRedo () : bool = Yjs.canRedo undoManager
 
 // -- wiring: Yjs <-> WebSocket, Yjs -> read-model dispatch -----------------------
 

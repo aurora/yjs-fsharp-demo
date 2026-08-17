@@ -118,3 +118,29 @@ export function arrayRemoveValue(value, arr) {
     }
 }
 
+/**
+ * `scope` is one or more shared types whose changes - including nested content below them,
+ * e.g. fields inside a Y.Map living inside this one - should be tracked. By default only
+ * local changes are tracked (transactions with no explicit origin), which is exactly the
+ * complement of `remoteOrigin` above: undo() can therefore never touch another user's change.
+ */
+export function newUndoManager(scope) {
+    return new yjs.UndoManager(scope);
+}
+
+export function undo(um) {
+    um.undo();
+}
+
+export function redo(um) {
+    um.redo();
+}
+
+export function canUndo(um) {
+    return um.canUndo();
+}
+
+export function canRedo(um) {
+    return um.canRedo();
+}
+

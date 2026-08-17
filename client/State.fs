@@ -245,6 +245,14 @@ let update (msg: Msg) (model: Model) : Model * Cmd<Msg> =
                 model, Cmd.none
         | _ -> model, Cmd.none
 
+    | Undo ->
+        Doc.undo ()
+        model, Cmd.none
+
+    | Redo ->
+        Doc.redo ()
+        model, Cmd.none
+
     | RenameSelf name ->
         let trimmed = name.Trim()
         { model with MyName = (if trimmed = "" then model.MyName else trimmed) }, Cmd.none

@@ -1,5 +1,5 @@
 
-import { applyRemoteUpdate, onLocalUpdate, observeDeep, textInsert, textDelete, arrayRemoveValue, mapDelete, arrayPush, newText, mapSet, newMap, transact, mapKeys, textToString, mapGetString, mapGetFloat, mapGetObj, arrayToList, getArray, getMap, createDoc } from "./Interop/Yjs.js";
+import { applyRemoteUpdate, onLocalUpdate, observeDeep, redo as redo_1, canRedo as canRedo_1, undo as undo_1, canUndo as canUndo_1, textInsert, textDelete, arrayRemoveValue, mapDelete, arrayPush, newText, mapSet, newMap, transact, mapKeys, textToString, mapGetString, mapGetFloat, mapGetObj, arrayToList, newUndoManager, getArray, getMap, createDoc } from "./Interop/Yjs.js";
 import { FSharpRef } from "./fable_modules/fable-library-js.5.13.0/Types.js";
 import { stringHash, createAtom } from "./fable_modules/fable-library-js.5.13.0/Util.js";
 import { substring, concat, format } from "./fable_modules/fable-library-js.5.13.0/String.js";
@@ -15,6 +15,8 @@ const doc = createDoc();
 const notesMap = getMap("notes", doc);
 
 const noteOrder = getArray("noteOrder", doc);
+
+const undoManager = newUndoManager([notesMap, noteOrder]);
 
 export const myClientId = doc.clientID;
 
@@ -129,6 +131,28 @@ export function editNoteText(id, oldText, newText$0027) {
         });
         log(DebugDirection.Out, "note-edit", `${substring(id, 0, 6)} -${removedLen}/+${insertedText.length} chars @ ${prefix}`);
     }
+}
+
+export function undo() {
+    if (canUndo_1(undoManager)) {
+        log(DebugDirection.Out, "undo", "reverting last local change");
+        undo_1(undoManager);
+    }
+}
+
+export function redo() {
+    if (canRedo_1(undoManager)) {
+        log(DebugDirection.Out, "redo", "reapplying last undone change");
+        redo_1(undoManager);
+    }
+}
+
+export function canUndo() {
+    return canUndo_1(undoManager);
+}
+
+export function canRedo() {
+    return canRedo_1(undoManager);
 }
 
 export function connect(dispatch) {

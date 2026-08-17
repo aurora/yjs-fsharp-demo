@@ -10,7 +10,7 @@ import { Cmd_none } from "./fable_modules/Fable.Elmish.5.0.2/cmd.fs.js";
 import { encodePresence, tryDecode } from "./Awareness.js";
 import { zoomAt, screenToWorld, centerOn } from "./Camera.js";
 import { hitTest } from "./Canvas.js";
-import { sendAwareness, editNoteText, addNote, moveNote, deleteNote } from "./Doc.js";
+import { redo, undo, sendAwareness, editNoteText, addNote, moveNote, deleteNote } from "./Doc.js";
 
 export class StartupConfig extends Record {
     constructor(Name, Color, ClientId) {
@@ -311,6 +311,14 @@ export function update(msg, model) {
                 default:
                     return [model, Cmd_none()];
             }
+        }
+        case 20: {
+            undo();
+            return [model, Cmd_none()];
+        }
+        case 21: {
+            redo();
+            return [model, Cmd_none()];
         }
         case 19: {
             const trimmed = msg.fields[0].trim();

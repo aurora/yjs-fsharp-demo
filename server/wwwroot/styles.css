@@ -181,6 +181,10 @@ html, body {
 }
 .ghost-btn:hover { background: #f2efe9; }
 .ghost-btn.active { background: var(--accent); color: white; border-color: var(--accent); }
+.ghost-btn:disabled { opacity: .35; cursor: default; }
+.ghost-btn:disabled:hover { background: #fff; }
+
+#undo-toolbar { display: flex; gap: 6px; }
 
 /* ---------- canvas ---------- */
 

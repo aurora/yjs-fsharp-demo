@@ -223,7 +223,7 @@ export class Msg extends Union {
         this.fields = fields;
     }
     cases() {
-        return ["SocketOpened", "SocketClosed", "AwarenessReceived", "DocChanged", "MouseDown", "MouseMove", "MouseUp", "DoubleClick", "Wheel", "WindowResized", "AddNote", "DeleteNote", "StartEditNote", "EditNoteText", "StopEditNote", "ToggleFollow", "ToggleDebugPanel", "HeartbeatTick", "LogDebug", "RenameSelf"];
+        return ["SocketOpened", "SocketClosed", "AwarenessReceived", "DocChanged", "MouseDown", "MouseMove", "MouseUp", "DoubleClick", "Wheel", "WindowResized", "AddNote", "DeleteNote", "StartEditNote", "EditNoteText", "StopEditNote", "ToggleFollow", "ToggleDebugPanel", "HeartbeatTick", "LogDebug", "RenameSelf", "Undo", "Redo"];
     }
     static SocketOpened = new Msg(0, []);
     static SocketClosed = new Msg(1, []);
@@ -231,9 +231,11 @@ export class Msg extends Union {
     static StopEditNote = new Msg(14, []);
     static ToggleDebugPanel = new Msg(16, []);
     static HeartbeatTick = new Msg(17, []);
+    static Undo = new Msg(20, []);
+    static Redo = new Msg(21, []);
 }
 
 export function Msg_$reflection() {
-    return union_type("Client.Types.Msg", [], Msg, () => [[], [], [["Item", string_type]], [["Item1", list_type(NoteSnapshot_$reflection())], ["Item2", list_type(string_type)]], [["Item1", Vec2_$reflection()], ["button", int32_type]], [["Item", Vec2_$reflection()]], [], [["Item", Vec2_$reflection()]], [["Item1", Vec2_$reflection()], ["deltaY", float64_type]], [["Item1", float64_type], ["Item2", float64_type]], [["Item", NoteColor_$reflection()]], [["Item", string_type]], [["Item", string_type]], [["Item1", string_type], ["Item2", string_type]], [], [["Item", float64_type]], [], [], [["Item1", DebugDirection_$reflection()], ["kind", string_type], ["detail", string_type]], [["Item", string_type]]]);
+    return union_type("Client.Types.Msg", [], Msg, () => [[], [], [["Item", string_type]], [["Item1", list_type(NoteSnapshot_$reflection())], ["Item2", list_type(string_type)]], [["Item1", Vec2_$reflection()], ["button", int32_type]], [["Item", Vec2_$reflection()]], [], [["Item", Vec2_$reflection()]], [["Item1", Vec2_$reflection()], ["deltaY", float64_type]], [["Item1", float64_type], ["Item2", float64_type]], [["Item", NoteColor_$reflection()]], [["Item", string_type]], [["Item", string_type]], [["Item1", string_type], ["Item2", string_type]], [], [["Item", float64_type]], [], [], [["Item1", DebugDirection_$reflection()], ["kind", string_type], ["detail", string_type]], [["Item", string_type]], [], []]);
 }
 

@@ -71,6 +71,8 @@ let private mountShell (dispatch: Msg -> unit) : (Model -> unit) =
     let debugToggle = byId "debug-toggle"
     let connStatus = byId "conn-status"
     let connText: obj = connStatus?querySelector (".conn-text")
+    let undoBtn = byId "undo-btn"
+    let redoBtn = byId "redo-btn"
 
     // -- one-time sizing / resize wiring -----------------------------------------
 
@@ -163,6 +165,39 @@ let private mountShell (dispatch: Msg -> unit) : (Model -> unit) =
         el?onclick <- fun (_: obj) -> dispatch (AddNote color))
 
     debugToggle?addEventListener ("click", fun (_: obj) -> dispatch ToggleDebugPanel)
+
+    undoBtn?addEventListener ("click", fun (_: obj) -> dispatch Undo)
+    redoBtn?addEventListener ("click", fun (_: obj) -> dispatch Redo)
+
+    // Ctrl/Cmd+Z (+Shift) and Ctrl/Cmd+Y for board-wide undo/redo - but NOT while a text field
+    // is focused. <textarea>/<input> have their own native undo (character-level, based on
+    // selectionStart/selectionEnd) that should keep handling Ctrl+Z while actively typing;
+    // hijacking it there would fight the browser's own, perfectly good undo for free-text
+    // edits. Outside of a text field, Ctrl+Z always means "undo the last board-wide change".
+    (Browser.Dom.window :> obj)?addEventListener (
+        "keydown",
+        fun (e: obj) ->
+            let ctrlOrMeta: bool = (e?ctrlKey: bool) || (e?metaKey: bool)
+
+            if ctrlOrMeta then
+                let activeEl: obj = (Browser.Dom.document :> obj)?activeElement
+
+                let activeTag: string =
+                    if isNull activeEl then "" else activeEl?tagName
+
+                let isTextField = activeTag = "TEXTAREA" || activeTag = "INPUT"
+
+                if not isTextField then
+                    let key: string = (e?key: string).ToLower()
+                    let shift: bool = e?shiftKey
+
+                    if key = "z" then
+                        e?preventDefault ()
+                        dispatch (if shift then Redo else Undo)
+                    elif key = "y" then
+                        e?preventDefault ()
+                        dispatch Redo
+    )
 
     // -- per-render helpers ---------------------------------------------------------
 
@@ -364,6 +399,11 @@ let private mountShell (dispatch: Msg -> unit) : (Model -> unit) =
 
         if not (obj.ReferenceEquals(activeEl, nameInput)) then
             nameInput?value <- model.MyName
+
+        // Cheap enough to just query fresh every render rather than mirroring into Model -
+        // canUndo/canRedo are always in sync with the live document this way.
+        undoBtn?disabled <- not (Client.Doc.canUndo ())
+        redoBtn?disabled <- not (Client.Doc.canRedo ())
 
         if model.DebugOpen then
             debugPanel?classList?add ("open")

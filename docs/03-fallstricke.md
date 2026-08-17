@@ -96,15 +96,35 @@ Quelltext) — siehe [Client.fsproj](../client/Client.fsproj).
   verwendet bewusst simples, lesbares JSON statt dessen — gut für Nachvollziehbarkeit in einer
   Demo, für ein Produktivsystem eher das offizielle Protokoll in Betracht ziehen, v.a. wenn man
   mit bestehenden Yjs-Providern (`y-websocket`, `y-webrtc`) zusammenarbeiten will.
-- **Undo/Redo**: Yjs bringt einen `UndoManager` mit, der CRDT-bewusst ist (versteht, welche
-  Änderungen zu welchem Nutzer/welcher Transaktion gehören, funktioniert korrekt auch wenn
-  zwischenzeitlich andere Nutzer Änderungen gemacht haben). Nicht selbst nachbauen.
+- **Undo/Redo**: Yjs bringt mit `Y.UndoManager` einen fertigen, CRDT-bewussten Undo-Stack mit —
+  nicht selbst nachbauen. Man instanziiert ihn gegen einen bestimmten Scope (einen einzelnen
+  geteilten Typ oder mehrere, z.B. die `Y.Map` eines Objekts oder gleich die ganze
+  Dokument-Wurzel) und ruft `undo()`/`redo()` auf. Der interessante Teil: er nutzt denselben
+  Origin-Mechanismus wie das [Origin-Tagging gegen Echo-Schleifen](#4-origin-tagging-nicht-vergessen-echo-schleifen)
+  (Option `trackedOrigins`, standardmäßig nur Änderungen ohne explizite Origin, also die eigenen
+  lokalen) — dadurch macht `undo()` **immer nur die eigene letzte Änderung** rückgängig, egal was
+  andere Nutzer zwischenzeitlich geändert haben, und zwar strukturell korrekt statt "ganzen
+  Abschnitt auf alten Stand zurücksetzen". Das ist auch bewusstes Design, nicht nur Technik:
+  in Kollaborationssoftware soll Undo i.d.R. nicht fremde Änderungen zurücknehmen können.
+  Weitere eingebaute Details: schnell aufeinanderfolgende Änderungen werden über ein Zeitfenster
+  (`captureTimeout`, Default 500ms) zu einem Undo-Schritt zusammengefasst; an jedem Undo-Schritt
+  lassen sich Zusatzdaten wie die Cursor-Position speichern und beim Undo wiederherstellen; und
+  `undo()` selbst erzeugt einfach eine normale Transaktion, die wie jede andere Änderung an alle
+  anderen Clients gebroadcastet wird — kein Sonderprotokoll nötig
+  ([Quelle](https://docs.yjs.dev/api/undo-manager)).
 - **Rich-Text-Editoren**: Für echte Editoren (nicht ein einfaches `<textarea>` wie in diesem
   Prototyp) gibt es offizielle, ausgereifte Bindings: `y-prosemirror`, `y-codemirror`,
   `y-monaco`, `y-quill`, sowie Tiptaps eingebaute Yjs-Kollaboration. Diese kümmern sich u.a.
   korrekt um IME-Komposition (z.B. asiatische Eingabemethoden), Cursor-in-Text-Anzeige anderer
   Nutzer, und Undo — die selbstgebaute Prefix/Suffix-Diff-Logik dieses Prototyps ist eine für
   eine Demo angemessene Vereinfachung, aber **nicht** empfehlenswert für einen echten Editor.
+  Besonders bei `contenteditable`-basierten Editoren (statt `<textarea>`) wird das schnell
+  heikel: `contenteditable` hat ein *eigenes* natives Undo, das auf rohen DOM-Mutationen
+  basiert statt auf einem einfachen String+Cursor-Offset — patcht man den Inhalt gleichzeitig
+  programmatisch (wegen eingehender Remote-Updates), gerät dieser native Undo-Stack leicht
+  durcheinander. Offizielle Bindings wie `y-prosemirror` lösen das, indem sie natives Undo im
+  editierbaren Bereich bewusst abschalten und alles, inklusive Undo, exklusiv durch Yjs'
+  `UndoManager` leiten.
 - **Auth/Zugriffsschutz**: Yjs selbst hat keine Meinung zu Authentifizierung — das muss auf der
   Transport-/Raum-Ebene selbst gelöst werden (siehe auch [Skalierung](04-skalierung.md)).
 - **Große Dokumente**: `Y.Doc` unterstützt verschachtelte Sub-Dokumente, um Teile eines sehr

@@ -130,3 +130,5 @@ type Msg =
     | HeartbeatTick
     | LogDebug of DebugDirection * kind: string * detail: string
     | RenameSelf of string
+    | Undo
+    | Redo

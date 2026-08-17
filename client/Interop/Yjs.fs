@@ -111,3 +111,21 @@ let arrayRemoveValue (value: string) (arr: YArray) : unit =
     match idx with
     | Some i -> (arr :> obj)?delete (i, 1) |> ignore
     | None -> ()
+
+// -- Y.UndoManager --------------------------------------------------------------
+
+type YUndoManager =
+    interface
+    end
+
+/// `scope` is one or more shared types whose changes - including nested content below them,
+/// e.g. fields inside a Y.Map living inside this one - should be tracked. By default only
+/// local changes are tracked (transactions with no explicit origin), which is exactly the
+/// complement of `remoteOrigin` above: undo() can therefore never touch another user's change.
+let newUndoManager (scope: obj[]) : YUndoManager =
+    createNew Y?UndoManager scope :?> YUndoManager
+
+let undo (um: YUndoManager) : unit = (um :> obj)?undo () |> ignore
+let redo (um: YUndoManager) : unit = (um :> obj)?redo () |> ignore
+let canUndo (um: YUndoManager) : bool = (um :> obj)?canUndo ()
+let canRedo (um: YUndoManager) : bool = (um :> obj)?canRedo ()

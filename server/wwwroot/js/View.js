@@ -1,8 +1,9 @@
 
 import { concat, join, replace } from "./fable_modules/fable-library-js.5.13.0/String.js";
 import { min } from "./fable_modules/fable-library-js.5.13.0/Double.js";
-import { connect, debugSink } from "./Doc.js";
+import { canRedo, canUndo, connect, debugSink } from "./Doc.js";
 import { NoteColorModule_toCss, NoteColorModule_ofStorage, Vec2, Msg } from "./Types.js";
+import { Operators_IsNull } from "./fable_modules/fable-library-js.5.13.0/FSharp.Core.js";
 import { length, tryHead, map } from "./fable_modules/fable-library-js.5.13.0/List.js";
 import { disposeSafe, getEnumerator, equals } from "./fable_modules/fable-library-js.5.13.0/Util.js";
 import { tryFind, toList } from "./fable_modules/fable-library-js.5.13.0/Map.js";
@@ -70,6 +71,8 @@ function mountShell(dispatch) {
     const debugToggle = byId("debug-toggle");
     const connStatus = byId("conn-status");
     const connText = connStatus.querySelector(".conn-text");
+    const undoBtn = byId("undo-btn");
+    const redoBtn = byId("redo-btn");
     const resizeCanvas = () => {
         const w = wrap.clientWidth;
         const h = wrap.clientHeight;
@@ -140,6 +143,36 @@ function mountShell(dispatch) {
     debugToggle.addEventListener("click", ((_arg_6) => {
         dispatch(Msg.ToggleDebugPanel);
     }));
+    undoBtn.addEventListener("click", ((_arg_7) => {
+        dispatch(Msg.Undo);
+    }));
+    redoBtn.addEventListener("click", ((_arg_8) => {
+        dispatch(Msg.Redo);
+    }));
+    window.addEventListener("keydown", ((e_6) => {
+        if (e_6.ctrlKey ? true : e_6.metaKey) {
+            const activeEl = document.activeElement;
+            const activeTag = Operators_IsNull(activeEl) ? "" : activeEl.tagName;
+            if (!((activeTag === "TEXTAREA") ? true : (activeTag === "INPUT"))) {
+                const key_1 = e_6.key.toLocaleLowerCase();
+                const shift = e_6.shiftKey;
+                switch (key_1) {
+                    case "z": {
+                        e_6.preventDefault();
+                        dispatch(shift ? Msg.Redo : Msg.Undo);
+                        break;
+                    }
+                    case "y": {
+                        e_6.preventDefault();
+                        dispatch(Msg.Redo);
+                        break;
+                    }
+                    default:
+                        undefined;
+                }
+            }
+        }
+    }));
     let lastRenderedHead = undefined;
     let lastPresenceSignature = "";
     let pendingPaintModel = undefined;
@@ -150,6 +183,8 @@ function mountShell(dispatch) {
         if (!(document.activeElement === nameInput)) {
             nameInput.value = model_5.MyName;
         }
+        undoBtn.disabled = !canUndo();
+        redoBtn.disabled = !canRedo();
         if (model_5.DebugOpen) {
             debugPanel.classList.add("open");
             debugToggle.classList.add("active");
@@ -183,7 +218,7 @@ function mountShell(dispatch) {
                     div.style.background = info_1.Color;
                     div.title = (info_1.Name + (isFollowing ? " (Folgen aktiv - Klick zum Beenden)" : " (Klick zum Folgen)"));
                     div.textContent = info_1.Initial;
-                    div.onclick = ((_arg_7) => {
+                    div.onclick = ((_arg_9) => {
                         dispatch(new Msg(/* ToggleFollow */ 15, [info_1.ClientId]));
                     });
                     presenceBar.appendChild(div);
@@ -274,7 +309,7 @@ function mountShell(dispatch) {
         pendingPaintModel = model_5;
         if (!paintScheduled) {
             paintScheduled = true;
-            window.requestAnimationFrame((_arg_8) => {
+            window.requestAnimationFrame((_arg_10) => {
                 let matchValue_7;
                 paintScheduled = false;
                 if (pendingPaintModel != null) {
