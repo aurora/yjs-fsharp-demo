@@ -96,6 +96,58 @@ muss diesen Teil entweder selbst neu erfinden oder bewusst durch etwas Einfacher
 den eigenen Anwendungsfall) — mit den jeweiligen Einschränkungen, die CRDTs gerade vermeiden
 sollen (kein Offline-Modus, kein Peer-to-Peer, potenziell verlorene Änderungen bei Konflikten).
 
+Zwei konkrete Beispiele, was das in der Praxis bedeutet — beides Dinge, die man bei Yjs geschenkt
+bekommt, bei einer Eigenentwicklung aber vollständig selbst entwerfen müsste:
+
+### Server-seitiges Locking: der Preis der Zuverlässigkeit
+
+Ein naheliegender Ersatz für echtes Co-Editing ist ein **Lock**: Feld wird für andere
+schreibgeschützt, sobald jemand es öffnet. Das Problem dabei ist nicht die Sperre selbst,
+sondern ihre Freigabe — ein **hartes Lock ("gesperrt bis explizit freigegeben")** ist nur so
+zuverlässig wie die Fähigkeit, zu erkennen, dass der Halter weg ist. Bricht die Verbindung
+mitten im Editieren ab (Internet weg, Rechner abgestürzt, Tab hart geschlossen), meldet sich
+das per Definition nicht sauber ab — ohne Gegenmaßnahme bleibt das Feld für alle anderen für
+immer gesperrt.
+
+Die Standard-Lösung dafür ist ein **Lease statt eines Locks**: nicht "gesperrt bis freigegeben",
+sondern "gesperrt für die nächsten paar Sekunden, muss aktiv erneuert werden (Heartbeat), sonst
+verfällt es automatisch". Technisch lösbar, aber zusätzlicher, nicht-trivialer Code: Timeout
+wählen, Erneuerung verdrahten, das Wettrennen zwischen "Lease läuft gerade ab" und "Nutzer tippt
+noch" behandeln.
+
+**Ein CRDT hat dieses Problem strukturell gar nicht.** Es gibt kein Lock, das hängen bleiben
+könnte — bricht jemand mitten im Tippen weg, bleibt einfach stehen, was er bis dahin geschrieben
+hat, nichts muss aufgeräumt werden. Diese ganze Fehlerklasse (Lease-Timeouts, Disconnect-Erkennung,
+Race zwischen Ablauf und aktivem Tippen) existiert bei echtem Co-Editing schlicht nicht — das ist
+kein Nebeneffekt, sondern einer der Kerngründe, warum CRDTs für UI-Kollaboration so gut passen.
+
+Praktische Konsequenz für die UI, unabhängig davon: ein zeichengenauer Cursor anderer Nutzer
+*innerhalb* eines Textfelds bräuchte ohnehin eine eigene Editor-Engine statt eines nativen
+`<textarea>`/`<input>` (siehe [Fallstricke #6](03-fallstricke.md#6-die-fablejs-grenze-wo-typsicherheit-aufhört))
+— ein einfaches Präsenz-Badge ("X tippt hier gerade") reicht dafür in der Praxis meist aus und
+ist genau das Muster, das z.B. Google Sheets und Airtable beim Zellen-Editieren selbst verwenden,
+statt eines Locks oder eines präzisen In-Text-Cursors.
+
+### Undo/Redo: auch das müsste komplett selbst gebaut werden
+
+Der `Y.UndoManager` aus [Fallstricke #Undo/Redo](03-fallstricke.md#was-man-sonst-vorher-wissen-sollte)
+ist mehr als Komfort — korrektes Undo in einer Mehrbenutzer-Umgebung ist ein eigenständig
+schwieriges Problem, das eng mit dem Merge-Algorithmus zusammenhängt, nicht getrennt davon
+lösbar ist:
+
+- Man muss jede Änderung ihrem Urheber zuordnen können (sonst lässt sich "nur meine letzte
+  Änderung rückgängig machen" gar nicht ausdrücken).
+- Man muss die *Umkehrung* einer Operation korrekt berechnen können, selbst wenn zwischenzeitlich
+  andere Nutzer an derselben Stelle etwas geändert haben — ein naives "meine ursprüngliche
+  Tastenfolge rückwärts abspielen" trifft nach fremden Zwischenänderungen leicht die falsche
+  Position oder zerstört, was andere geschrieben haben. Undo in OT-Systemen gilt in der
+  Forschung als einer der fehleranfälligsten Teile überhaupt, gerade weil es scheinbar einfach
+  aussieht.
+- Bei Yjs hängt das direkt an derselben Struktur, die auch den Merge korrekt macht (siehe YATA
+  oben) — `UndoManager` nutzt sie einfach mit. Bei einer Eigenentwicklung (egal ob eigenes OT
+  oder eigenes einfaches Locking-Schema) wäre das ein zweites, unabhängiges Forschungsproblem
+  obendrauf, nicht mit erledigt.
+
 ## Wie reif/verbreitet ist Yjs wirklich?
 
 Kurz: **sehr.** Das ist keine Nischen- oder Frickelbibliothek:
