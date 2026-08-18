@@ -163,9 +163,40 @@ ist genau der Teil, an dem Yjs und Automerge jahrelang gearbeitet haben (siehe
 [Kapitel 1](01-crdt-und-yjs.md#warum-ist-das-schwer-selbst-zu-bauen)) — das nativ in F#
 nachzubauen wäre kein Bindings-Projekt mehr, sondern dieselbe Forschungsarbeit von vorne.
 
+**Würde das KI-gestützt in vertretbarem Aufwand gehen?** Nein, und der Grund ist wichtig genug,
+um ihn genau zu benennen: eine reine *Übersetzung* von Yjs' Quelltext nach F# ist tatsächlich
+eine Aufgabe, bei der KI-Unterstützung spürbar beschleunigt (Typübersetzung, Boilerplate,
+Testgerüste). Der eigentliche Aufwand bei einem Sequenz-CRDT-Algorithmus liegt aber nicht im
+Hinschreiben, sondern im **Beweisen, dass er unter jeder möglichen gleichzeitigen
+Operationsreihenfolge konvergiert** — ein kombinatorisch riesiger Raum, und genau diese Fehler
+zeigen sich typischerweise erst nach langem Praxiseinsatz mit vielen gleichzeitigen Nutzern,
+nicht bei den offensichtlichen Testfällen. Das lässt sich nicht schneller schreiben, es lässt
+sich nur länger in echtem Einsatz beobachten — und genau diese Zeit ist der Teil, den weder
+Mensch noch KI abkürzen kann. Als Beleg reicht ein Blick auf [`Ycs`](https://github.com/yjs/ycs):
+selbst mit direktem Zugriff auf die Referenzimplementierung, unter der `yjs`-Organisation
+selbst entwickelt, ist der Port nach Jahren immer noch nicht bei Version 1.0.
+
+**Anders sieht es aus, wenn KI nicht die Logik, sondern nur die Typinformationen generiert** —
+also genau die `ts2fable`/Glutinum-Bindings von oben KI-gestützt erstellen/nacharbeiten, statt
+Yjs' Algorithmus neu zu schreiben. Das ist eine fundamental andere Risikoklasse: Yjs' eigentliche
+Logik bleibt dabei komplett unangetastet, der bereits bewiesene JS-Code läuft unverändert weiter
+— man beschreibt nur seine *Form* präziser für den Compiler. Zwei Gründe, warum das gut zu KI
+passt: es gibt mit Yjs' eigenen, gepflegten `.d.ts`-Typdefinitionen eine autoritative
+Grundwahrheit, gegen die generierter Code geprüft werden kann, und der Fehlerfall ist harmlos —
+eine falsche Signatur gibt sofort einen Compilerfehler oder eine Laufzeitausnahme beim ersten
+Aufruf, keinen leisen Datenfehler, der sich erst nach Monaten bei einer bestimmten
+Nutzerkonstellation zeigt. Konkret: Yjs' `.d.ts` durch Glutinum laufen lassen, das
+KI-gestützt nacharbeiten, was der Generator nicht sauber schafft (bekannte Schwachstellen:
+Generics, Überladungen), und für jede Bindung einen Test gegen das echte `yjs.mjs` schreiben.
+Verbleibendes Risiko: `.d.ts`-Dateien können an Rändern ungenau sein — aber exakt dieselbe
+Vertrauensbasis, auf der jedes TypeScript-Projekt mit Yjs sowieso steht, also keine neue
+Schwäche gegenüber der JS/TS-Welt, nur ein Erreichen von deren Niveau.
+
 Fazit: die Fläche lässt sich mit Werkzeugen wie Glutinum verkleinern, aber ohne eigenes
 Zusatzprojekt nicht auf null bringen — die oben beschriebene Eindämmung (opake Typen + getypte
 Wrapper-Funktionen) ist praktisch nah dran an dem, was sich ohne diese Mehrarbeit erreichen lässt.
+KI-gestützte Bindings-Generierung ist dabei ein realistischer Weg, diese Fläche weiter zu
+verkleinern; eine KI-gestützte Neuimplementierung des Algorithmus selbst dagegen nicht.
 
 ## Was man sonst vorher wissen sollte
 
