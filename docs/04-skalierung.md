@@ -4,6 +4,13 @@ Kurzfassung vorweg: Bei einigen hundert Elementen und einigen zehn gleichzeitige
 gut wie nichts hiervon spürbar. Die Punkte unten sind dafür da, zu wissen, *worauf* man achten
 sollte, bevor es zum Problem wird — nicht als Warnung, dass es bald eng wird.
 
+> **Ehrlichkeitshinweis**: die Fixes in diesem Prototyp (Drag-Throttling, an
+> `requestAnimationFrame` gekoppeltes Zeichnen, paralleler Server-Broadcast) sind begründet und
+> mit zwei Browser-Tabs verifiziert — nicht mit zehn oder mehr echten gleichzeitigen Clients
+> unter Last gemessen. Das Design ist vernünftig hergeleitet, aber empirisch nur im Kleinen
+> geprüft. Für eine belastbare Aussage bei echter Mehrbenutzerlast bräuchte es einen
+> Lasttest-Aufbau (mehrere simulierte WebSocket-Clients, die gleichzeitig Notes bewegen/tippen).
+
 ## Was praktisch nie zum Problem wird
 
 - **Yjs' eigener Merge-Algorithmus.** Yjs ist für große Dokumente und hohe Änderungsraten

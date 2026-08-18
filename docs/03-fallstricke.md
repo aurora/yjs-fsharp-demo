@@ -239,3 +239,15 @@ verkleinern; eine KI-gestützte Neuimplementierung des Algorithmus selbst dagege
 - **Große Dokumente**: `Y.Doc` unterstützt verschachtelte Sub-Dokumente, um Teile eines sehr
   großen Dokuments erst bei Bedarf zu laden — relevant, falls die geteilte Struktur mal deutlich
   über hunderte Elemente hinauswächst.
+- **Wie testet man sowas eigentlich?** Für diesen Prototyp: manuell, über zwei per
+  Browser-Automation gesteuerte Tabs (siehe die Test-Nachweise, die in dieser Doku an mehreren
+  Stellen referenziert werden — z.B. der Drag-Throttling-Beleg in
+  [Skalierung](04-skalierung.md)). Das findet offensichtliche Bugs, aber nicht die
+  Randfall-Fehler, die CRDT-Algorithmen laut [Kapitel 6](#6-die-fablejs-grenze-wo-typsicherheit-aufhört)
+  eigentlich gefährlich machen. Für ernsthafteres Testen bräuchte es **Convergence-Tests**: in
+  einem Testprozess mehrere `Y.Doc`-Instanzen gegeneinander laufen lassen, zufällige (auch
+  bewusst pathologische) gleichzeitige Operationsfolgen erzeugen, und nach dem gegenseitigen
+  Austausch aller Updates prüfen, ob alle Instanzen exakt denselben Endzustand erreichen
+  ("Fuzz-/Property-based Testing"). Das ist im Kern dieselbe Technik, mit der Yjs selbst und
+  CRDT-Forschung allgemein Korrektheit prüfen — für dieses Projekt bewusst nicht aufgesetzt
+  (Prototyp-Scope), für einen produktiven Einsatz aber der naheliegende nächste Schritt.
