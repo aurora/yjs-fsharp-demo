@@ -1,7 +1,7 @@
 
 import { join, concat, replace } from "./fable_modules/fable-library-js.5.13.0/String.js";
 import { min } from "./fable_modules/fable-library-js.5.13.0/Double.js";
-import { canRedo, canUndo, connect, debugSink } from "./Doc.js";
+import { canRedo, canUndo, consoleLoggingEnabled, connect, debugSink } from "./Doc.js";
 import { NoteColorModule_toCss, NoteColorModule_ofStorage, Vec2, Msg } from "./Types.js";
 import { Operators_IsNull } from "./fable_modules/fable-library-js.5.13.0/FSharp.Core.js";
 import { length, tryHead, map, tryPick } from "./fable_modules/fable-library-js.5.13.0/List.js";
@@ -69,6 +69,7 @@ function mountShell(dispatch) {
     const debugPanel = byId("debug-panel");
     const debugLog = byId("debug-log");
     const debugToggle = byId("debug-toggle");
+    const debugConsoleCheckbox = byId("debug-console-checkbox");
     const connStatus = byId("conn-status");
     const connText = connStatus.querySelector(".conn-text");
     const undoBtn = byId("undo-btn");
@@ -149,10 +150,13 @@ function mountShell(dispatch) {
     debugToggle.addEventListener("click", ((_arg_6) => {
         dispatch(Msg.ToggleDebugPanel);
     }));
-    undoBtn.addEventListener("click", ((_arg_7) => {
+    debugConsoleCheckbox.addEventListener("change", ((_arg_7) => {
+        consoleLoggingEnabled(debugConsoleCheckbox.checked);
+    }));
+    undoBtn.addEventListener("click", ((_arg_8) => {
         dispatch(Msg.Undo);
     }));
-    redoBtn.addEventListener("click", ((_arg_8) => {
+    redoBtn.addEventListener("click", ((_arg_9) => {
         dispatch(Msg.Redo);
     }));
     window.addEventListener("keydown", ((e_6) => {
@@ -182,10 +186,10 @@ function mountShell(dispatch) {
     let currentPanelNoteId = undefined;
     let pendingSelfTitle = undefined;
     let pendingSelfDescription = undefined;
-    notePanelClose.addEventListener("click", ((_arg_9) => {
+    notePanelClose.addEventListener("click", ((_arg_10) => {
         dispatch(new Msg(/* SelectNote */ 22, [undefined]));
     }));
-    noteTitleInput.addEventListener("input", ((_arg_10) => {
+    noteTitleInput.addEventListener("input", ((_arg_11) => {
         if (currentPanelNoteId == null) {
         }
         else {
@@ -195,17 +199,17 @@ function mountShell(dispatch) {
             dispatch(new Msg(/* SetNoteTitle */ 23, [id_1, value_3]));
         }
     }));
-    noteTitleInput.addEventListener("focus", ((_arg_11) => {
+    noteTitleInput.addEventListener("focus", ((_arg_12) => {
         if (currentPanelNoteId == null) {
         }
         else {
             dispatch(new Msg(/* SetEditingField */ 25, [[currentPanelNoteId, "title"]]));
         }
     }));
-    noteTitleInput.addEventListener("blur", ((_arg_12) => {
+    noteTitleInput.addEventListener("blur", ((_arg_13) => {
         dispatch(new Msg(/* SetEditingField */ 25, [undefined]));
     }));
-    noteDescTextarea.addEventListener("input", ((_arg_13) => {
+    noteDescTextarea.addEventListener("input", ((_arg_14) => {
         if (currentPanelNoteId == null) {
         }
         else {
@@ -215,14 +219,14 @@ function mountShell(dispatch) {
             dispatch(new Msg(/* EditNoteDescription */ 24, [id_3, value_4]));
         }
     }));
-    noteDescTextarea.addEventListener("focus", ((_arg_14) => {
+    noteDescTextarea.addEventListener("focus", ((_arg_15) => {
         if (currentPanelNoteId == null) {
         }
         else {
             dispatch(new Msg(/* SetEditingField */ 25, [[currentPanelNoteId, "description"]]));
         }
     }));
-    noteDescTextarea.addEventListener("blur", ((_arg_15) => {
+    noteDescTextarea.addEventListener("blur", ((_arg_16) => {
         dispatch(new Msg(/* SetEditingField */ 25, [undefined]));
     }));
     let lastRenderedHead = undefined;
@@ -305,7 +309,7 @@ function mountShell(dispatch) {
                     div.style.background = info_1.Color;
                     div.title = (info_1.Name + (isFollowing ? " (Folgen aktiv - Klick zum Beenden)" : " (Klick zum Folgen)"));
                     div.textContent = info_1.Initial;
-                    div.onclick = ((_arg_16) => {
+                    div.onclick = ((_arg_17) => {
                         dispatch(new Msg(/* ToggleFollow */ 15, [info_1.ClientId]));
                     });
                     presenceBar.appendChild(div);
@@ -445,7 +449,7 @@ function mountShell(dispatch) {
         pendingPaintModel = model_7;
         if (!paintScheduled) {
             paintScheduled = true;
-            window.requestAnimationFrame((_arg_18) => {
+            window.requestAnimationFrame((_arg_19) => {
                 let matchValue_10;
                 paintScheduled = false;
                 if (pendingPaintModel != null) {

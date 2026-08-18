@@ -33,7 +33,7 @@ export function init(cfg, unitVar) {
     }), new Camera(0, 0, 1), window.innerWidth, window.innerHeight, undefined, undefined, minValue(), minValue(), DragState.NotDragging, undefined, undefined, undefined, undefined, false, empty_1(), true), Cmd_none()];
 }
 
-const maxDebugEntries = 150;
+const maxDebugEntries = 60;
 
 function sendAwarenessNow(model) {
     const matchValue = model.Me;

@@ -42,7 +42,11 @@ let init (cfg: StartupConfig) () : Model * Cmd<Msg> =
 
     model, Cmd.none
 
-let private maxDebugEntries = 150
+// Kept modest on purpose: this only bounds DOM node / memory retention for the on-screen
+// panel (rendering is already incremental, see View.renderDebug) - console mirroring, the
+// much bigger performance risk under real multi-window use, is now opt-in and off by default
+// (Doc.consoleLoggingEnabled).
+let private maxDebugEntries = 60
 
 /// Fires an awareness update outside the usual throttled heartbeat, for low-frequency,
 /// high-value events (starting/stopping editing a field) where a several-hundred-ms delay

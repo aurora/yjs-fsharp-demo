@@ -25,9 +25,13 @@ const connRef = new FSharpRef(undefined);
 export let debugSink = createAtom((_arg, _arg_1, _arg_2) => {
 });
 
+export let consoleLoggingEnabled = createAtom(false);
+
 function log(dir, kind, detail) {
-    const arrow = (dir.tag === 1) ? "OUT->" : ((dir.tag === 2) ? "....." : "IN <-");
-    console.log(`[collab] ${arrow} ${format("{0,-10}", kind)} ${detail}`);
+    if (consoleLoggingEnabled()) {
+        const arrow = (dir.tag === 1) ? "OUT->" : ((dir.tag === 2) ? "....." : "IN <-");
+        console.log(`[collab] ${arrow} ${format("{0,-10}", kind)} ${detail}`);
+    }
     debugSink()(dir, kind, detail);
 }
 

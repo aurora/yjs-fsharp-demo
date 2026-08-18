@@ -44,14 +44,26 @@ let private connRef: Ws.Connection option ref = ref None
 /// story for the demo.
 let mutable debugSink: DebugDirection -> string -> string -> unit = fun _ _ _ -> ()
 
-let private log (dir: DebugDirection) (kind: string) (detail: string) =
-    let arrow =
-        match dir with
-        | In -> "IN <-"
-        | Out -> "OUT->"
-        | Info -> "....."
+/// Mirroring every wire message to `console.log` as well is OFF by default. It's not just
+/// noise: with DevTools actually open, browsers retain every logged line indefinitely, and
+/// that retention is a well-known real performance drag - open it across two or three browser
+/// windows at once (each independently sending/receiving awareness pings and Yjs updates) and
+/// it can visibly bog down the whole machine, not just the tab. The on-screen debug panel
+/// (View.fs, capped and rendered incrementally) stays the primary "watch the traffic" view;
+/// this is an opt-in extra for when DevTools is actually open and wanted - see
+/// `window.__collab.setVerbose` in Program.fs.
+let mutable consoleLoggingEnabled = false
 
-    Browser.Dom.console.log ($"[collab] {arrow} {kind,-10} {detail}")
+let private log (dir: DebugDirection) (kind: string) (detail: string) =
+    if consoleLoggingEnabled then
+        let arrow =
+            match dir with
+            | In -> "IN <-"
+            | Out -> "OUT->"
+            | Info -> "....."
+
+        Browser.Dom.console.log ($"[collab] {arrow} {kind,-10} {detail}")
+
     debugSink dir kind detail
 
 // -- snapshot: rebuild the read-model from the live Y.Doc -----------------------

@@ -69,6 +69,7 @@ let private mountShell (dispatch: Msg -> unit) : (Model -> unit) =
     let debugPanel = byId "debug-panel"
     let debugLog = byId "debug-log"
     let debugToggle = byId "debug-toggle"
+    let debugConsoleCheckbox = byId "debug-console-checkbox"
     let connStatus = byId "conn-status"
     let connText: obj = connStatus?querySelector (".conn-text")
     let undoBtn = byId "undo-btn"
@@ -171,6 +172,14 @@ let private mountShell (dispatch: Msg -> unit) : (Model -> unit) =
         el?onclick <- fun (_: obj) -> dispatch (AddNote color))
 
     debugToggle?addEventListener ("click", fun (_: obj) -> dispatch ToggleDebugPanel)
+
+    // Purely local UI state, deliberately not routed through the Elmish model - this only
+    // ever affects Doc.fs's own console.log calls (see Doc.consoleLoggingEnabled), never the
+    // on-screen panel, so there's nothing here that needs to survive a re-render or be undone.
+    debugConsoleCheckbox?addEventListener (
+        "change",
+        fun (_: obj) -> Client.Doc.consoleLoggingEnabled <- debugConsoleCheckbox?``checked``
+    )
 
     undoBtn?addEventListener ("click", fun (_: obj) -> dispatch Undo)
     redoBtn?addEventListener ("click", fun (_: obj) -> dispatch Redo)
