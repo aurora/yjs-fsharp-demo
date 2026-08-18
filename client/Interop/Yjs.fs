@@ -75,6 +75,9 @@ let mapGetString (key: string) (map: YMap) : string = (map :> obj)?get (key)
 let mapGetObj (key: string) (map: YMap) : obj = (map :> obj)?get (key)
 let mapSet (key: string) (value: obj) (map: YMap) : unit = (map :> obj)?set (key, value) |> ignore
 let mapDelete (key: string) (map: YMap) : unit = (map :> obj)?delete (key) |> ignore
+/// Defensive existence check - lets us read fields that were added to the note "shape" after
+/// some notes already existed (e.g. while iterating on this prototype in a running session).
+let mapHas (key: string) (map: YMap) : bool = (map :> obj)?has (key)
 
 let mapKeys (map: YMap) : string[] =
     JS.Constructors.Array?from ((map :> obj)?keys ())

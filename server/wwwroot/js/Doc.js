@@ -1,5 +1,5 @@
 
-import { applyRemoteUpdate, onLocalUpdate, observeDeep, redo as redo_1, canRedo as canRedo_1, undo as undo_1, canUndo as canUndo_1, textInsert, textDelete, arrayRemoveValue, mapDelete, arrayPush, newText, mapSet, newMap, transact, mapKeys, textToString, mapGetString, mapGetFloat, mapGetObj, arrayToList, newUndoManager, getArray, getMap, createDoc } from "./Interop/Yjs.js";
+import { applyRemoteUpdate, onLocalUpdate, observeDeep, redo as redo_1, canRedo as canRedo_1, undo as undo_1, canUndo as canUndo_1, textInsert, textDelete, arrayRemoveValue, mapDelete, arrayPush, newText, mapSet, newMap, transact, mapKeys, mapGetFloat, textToString, mapGetString, mapHas, mapGetObj, arrayToList, newUndoManager, getArray, getMap, createDoc } from "./Interop/Yjs.js";
 import { FSharpRef } from "./fable_modules/fable-library-js.5.13.0/Types.js";
 import { stringHash, createAtom } from "./fable_modules/fable-library-js.5.13.0/Util.js";
 import { substring, concat, format } from "./fable_modules/fable-library-js.5.13.0/String.js";
@@ -41,7 +41,9 @@ export function snapshot() {
     return [map((id) => {
         const noteMap = mapGetObj(id, notesMap);
         const text = mapGetObj("text", noteMap);
-        return new NoteSnapshot(id, mapGetFloat("x", noteMap), mapGetFloat("y", noteMap), mapGetFloat("w", noteMap), mapGetFloat("h", noteMap), NoteColorModule_ofStorage(mapGetString("color", noteMap)), textToString(text));
+        const title = mapHas("title", noteMap) ? mapGetString("title", noteMap) : "";
+        const description = mapHas("description", noteMap) ? textToString(mapGetObj("description", noteMap)) : "";
+        return new NoteSnapshot(id, mapGetFloat("x", noteMap), mapGetFloat("y", noteMap), mapGetFloat("w", noteMap), mapGetFloat("h", noteMap), NoteColorModule_ofStorage(mapGetString("color", noteMap)), textToString(text), title, description);
     }, ofArray(mapKeys(notesMap))), order];
 }
 
@@ -67,6 +69,8 @@ export function addNote(color, x, y) {
         mapSet("h", 150, noteMap);
         mapSet("color", NoteColorModule_toStorage(color), noteMap);
         mapSet("text", newText(""), noteMap);
+        mapSet("title", "", noteMap);
+        mapSet("description", newText(""), noteMap);
         mapSet(id, noteMap, notesMap);
         arrayPush(id, noteOrder);
     });
@@ -96,18 +100,29 @@ export function deleteNote(id) {
 }
 
 /**
- * Turns a textarea's `input` event into a minimal Y.Text edit instead of a
- * full clear-and-rewrite, by diffing off the common prefix/suffix of old vs new
- * text. This is what lets two people type in different parts of the same note
- * at the same time without stomping on each other - Y.Text's CRDT merges the two
- * small, disjoint edits cleanly instead of one full-text write clobbering the other.
+ * A short, low-collision-risk field (a title) doesn't need Y.Text - a plain string value on
+ * the Y.Map is fine, with ordinary causally-correct last-writer-wins semantics per field. See
+ * docs/02-architektur-muster.md #6: not everything needs character-level merge.
  */
-export function editNoteText(id, oldText, newText$0027) {
+export function setNoteTitle(id, title) {
     const matchValue = tryGetNoteMap(id);
     if (matchValue == null) {
     }
     else {
-        const textNode = mapGetObj("text", matchValue);
+        const noteMap = matchValue;
+        transact(doc, () => {
+            mapSet("title", title, noteMap);
+        });
+        log(DebugDirection.Out, "note-title", concat(substring(id, 0, 6), " -> \"", title, "\""));
+    }
+}
+
+function editNoteTextField(fieldKey, id, oldText, newText$0027) {
+    const matchValue = tryGetNoteMap(id);
+    if (matchValue == null) {
+    }
+    else {
+        const textNode = mapGetObj(fieldKey, matchValue);
         const oldLen = oldText.length | 0;
         const newLen = newText$0027.length | 0;
         const maxCommon = min(oldLen, newLen) | 0;
@@ -129,8 +144,16 @@ export function editNoteText(id, oldText, newText$0027) {
                 textInsert(prefix, insertedText, textNode);
             }
         });
-        log(DebugDirection.Out, "note-edit", `${substring(id, 0, 6)} -${removedLen}/+${insertedText.length} chars @ ${prefix}`);
+        log(DebugDirection.Out, concat("note-", fieldKey), `${substring(id, 0, 6)} -${removedLen}/+${insertedText.length} chars @ ${prefix}`);
     }
+}
+
+export function editNoteText(id, oldText, newText$0027) {
+    editNoteTextField("text", id, oldText, newText$0027);
+}
+
+export function editNoteDescription(id, oldText, newText$0027) {
+    editNoteTextField("description", id, oldText, newText$0027);
 }
 
 export function undo() {

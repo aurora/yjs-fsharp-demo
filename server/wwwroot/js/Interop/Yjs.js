@@ -63,6 +63,14 @@ export function mapDelete(key, map) {
     map.delete(key);
 }
 
+/**
+ * Defensive existence check - lets us read fields that were added to the note "shape" after
+ * some notes already existed (e.g. while iterating on this prototype in a running session).
+ */
+export function mapHas(key, map) {
+    return map.has(key);
+}
+
 export function mapKeys(map) {
     return Array.from(map.keys());
 }

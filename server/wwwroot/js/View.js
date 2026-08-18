@@ -1,12 +1,12 @@
 
-import { concat, join, replace } from "./fable_modules/fable-library-js.5.13.0/String.js";
+import { join, concat, replace } from "./fable_modules/fable-library-js.5.13.0/String.js";
 import { min } from "./fable_modules/fable-library-js.5.13.0/Double.js";
 import { canRedo, canUndo, connect, debugSink } from "./Doc.js";
 import { NoteColorModule_toCss, NoteColorModule_ofStorage, Vec2, Msg } from "./Types.js";
 import { Operators_IsNull } from "./fable_modules/fable-library-js.5.13.0/FSharp.Core.js";
-import { length, tryHead, map } from "./fable_modules/fable-library-js.5.13.0/List.js";
-import { disposeSafe, getEnumerator, equals } from "./fable_modules/fable-library-js.5.13.0/Util.js";
+import { length, tryHead, map, tryPick } from "./fable_modules/fable-library-js.5.13.0/List.js";
 import { tryFind, toList } from "./fable_modules/fable-library-js.5.13.0/Map.js";
+import { disposeSafe, getEnumerator, equals } from "./fable_modules/fable-library-js.5.13.0/Util.js";
 import { toString } from "./fable_modules/fable-library-js.5.13.0/Date.js";
 import { worldToScreen } from "./Camera.js";
 import { render, hitTest } from "./Canvas.js";
@@ -73,6 +73,12 @@ function mountShell(dispatch) {
     const connText = connStatus.querySelector(".conn-text");
     const undoBtn = byId("undo-btn");
     const redoBtn = byId("redo-btn");
+    const notePanel = byId("note-panel");
+    const notePanelClose = byId("note-panel-close");
+    const noteTitleInput = byId("note-title-input");
+    const noteDescTextarea = byId("note-desc-textarea");
+    const titleBadge = byId("note-title-badge");
+    const descBadge = byId("note-desc-badge");
     const resizeCanvas = () => {
         const w = wrap.clientWidth;
         const h = wrap.clientHeight;
@@ -173,19 +179,100 @@ function mountShell(dispatch) {
             }
         }
     }));
+    let currentPanelNoteId = undefined;
+    let pendingSelfTitle = undefined;
+    let pendingSelfDescription = undefined;
+    notePanelClose.addEventListener("click", ((_arg_9) => {
+        dispatch(new Msg(/* SelectNote */ 22, [undefined]));
+    }));
+    noteTitleInput.addEventListener("input", ((_arg_10) => {
+        if (currentPanelNoteId == null) {
+        }
+        else {
+            const id_1 = currentPanelNoteId;
+            const value_3 = noteTitleInput.value;
+            pendingSelfTitle = value_3;
+            dispatch(new Msg(/* SetNoteTitle */ 23, [id_1, value_3]));
+        }
+    }));
+    noteTitleInput.addEventListener("focus", ((_arg_11) => {
+        if (currentPanelNoteId == null) {
+        }
+        else {
+            dispatch(new Msg(/* SetEditingField */ 25, [[currentPanelNoteId, "title"]]));
+        }
+    }));
+    noteTitleInput.addEventListener("blur", ((_arg_12) => {
+        dispatch(new Msg(/* SetEditingField */ 25, [undefined]));
+    }));
+    noteDescTextarea.addEventListener("input", ((_arg_13) => {
+        if (currentPanelNoteId == null) {
+        }
+        else {
+            const id_3 = currentPanelNoteId;
+            const value_4 = noteDescTextarea.value;
+            pendingSelfDescription = value_4;
+            dispatch(new Msg(/* EditNoteDescription */ 24, [id_3, value_4]));
+        }
+    }));
+    noteDescTextarea.addEventListener("focus", ((_arg_14) => {
+        if (currentPanelNoteId == null) {
+        }
+        else {
+            dispatch(new Msg(/* SetEditingField */ 25, [[currentPanelNoteId, "description"]]));
+        }
+    }));
+    noteDescTextarea.addEventListener("blur", ((_arg_15) => {
+        dispatch(new Msg(/* SetEditingField */ 25, [undefined]));
+    }));
     let lastRenderedHead = undefined;
     let lastPresenceSignature = "";
+    const editorNameFor = (model_3, noteId, field) => tryPick((tupledArg_1) => {
+        let f;
+        const info_2 = tupledArg_1[1];
+        const matchValue_5 = info_2.Editing;
+        let matchResult, f_1, nid_1;
+        if (matchValue_5 != null) {
+            if ((f = matchValue_5[1], (matchValue_5[0] === noteId) && (f === field))) {
+                matchResult = 0;
+                f_1 = matchValue_5[1];
+                nid_1 = matchValue_5[0];
+            }
+            else {
+                matchResult = 1;
+            }
+        }
+        else {
+            matchResult = 1;
+        }
+        switch (matchResult) {
+            case 0:
+                return info_2.Name;
+            default:
+                return undefined;
+        }
+    }, toList(model_3.Presence));
+    const setBadge = (badgeEl, nameOpt) => {
+        if (nameOpt == null) {
+            badgeEl.style.display = "none";
+        }
+        else {
+            const name = nameOpt;
+            badgeEl.style.display = "inline-block";
+            badgeEl.textContent = concat(name, " tippt…");
+        }
+    };
     let pendingPaintModel = undefined;
     let paintScheduled = false;
-    return (model_5) => {
-        connStatus.className = ("conn-status" + (model_5.Connected ? " online" : ""));
-        connText.textContent = (model_5.Connected ? "verbunden" : "verbinde…");
+    return (model_7) => {
+        connStatus.className = ("conn-status" + (model_7.Connected ? " online" : ""));
+        connText.textContent = (model_7.Connected ? "verbunden" : "verbinde…");
         if (!(document.activeElement === nameInput)) {
-            nameInput.value = model_5.MyName;
+            nameInput.value = model_7.MyName;
         }
         undoBtn.disabled = !canUndo();
         redoBtn.disabled = !canRedo();
-        if (model_5.DebugOpen) {
+        if (model_7.DebugOpen) {
             debugPanel.classList.add("open");
             debugToggle.classList.add("active");
         }
@@ -193,11 +280,11 @@ function mountShell(dispatch) {
             debugPanel.classList.remove("open");
             debugToggle.classList.remove("active");
         }
-        const model = model_5;
+        const model = model_7;
         const signature = (((model.MyName + "|") + model.MyColor) + "|") + join(",", map((tupledArg) => {
-            const id_1 = tupledArg[0];
+            const id_5 = tupledArg[0];
             const info = tupledArg[1];
-            return `${id_1}:${info.Name}:${info.Color}:${equals(model.Following, id_1)}`;
+            return `${id_5}:${info.Name}:${info.Color}:${equals(model.Following, id_5)}`;
         }, toList(model.Presence)));
         if (signature !== lastPresenceSignature) {
             lastPresenceSignature = signature;
@@ -218,7 +305,7 @@ function mountShell(dispatch) {
                     div.style.background = info_1.Color;
                     div.title = (info_1.Name + (isFollowing ? " (Folgen aktiv - Klick zum Beenden)" : " (Klick zum Folgen)"));
                     div.textContent = info_1.Initial;
-                    div.onclick = ((_arg_9) => {
+                    div.onclick = ((_arg_16) => {
                         dispatch(new Msg(/* ToggleFollow */ 15, [info_1.ClientId]));
                     });
                     presenceBar.appendChild(div);
@@ -228,22 +315,22 @@ function mountShell(dispatch) {
                 disposeSafe(enumerator);
             }
         }
-        const model_1 = model_5;
+        const model_1 = model_7;
         const matchValue = tryHead(model_1.DebugLog);
-        let matchResult, entry_1;
+        let matchResult_1, entry_1;
         if (matchValue != null) {
             if (!equals(matchValue, lastRenderedHead)) {
-                matchResult = 0;
+                matchResult_1 = 0;
                 entry_1 = matchValue;
             }
             else {
-                matchResult = 1;
+                matchResult_1 = 1;
             }
         }
         else {
-            matchResult = 1;
+            matchResult_1 = 1;
         }
-        switch (matchResult) {
+        switch (matchResult_1) {
             case 0: {
                 lastRenderedHead = entry_1;
                 let dirClass;
@@ -265,11 +352,11 @@ function mountShell(dispatch) {
                 break;
             }
         }
-        const model_2 = model_5;
+        const model_2 = model_7;
         const matchValue_3 = model_2.EditingNoteId;
         if (matchValue_3 != null) {
-            const id_2 = matchValue_3;
-            const matchValue_4 = tryFind(id_2, model_2.Notes);
+            const id_6 = matchValue_3;
+            const matchValue_4 = tryFind(id_6, model_2.Notes);
             if (matchValue_4 != null) {
                 const note = matchValue_4;
                 const topLeft = worldToScreen(model_2.Camera, new Vec2(note.X, note.Y));
@@ -282,8 +369,8 @@ function mountShell(dispatch) {
                 editOverlay.style.height = (h_1.toString() + "px");
                 editOverlay.style.background = NoteColorModule_toCss(note.Color);
                 editOverlay.style.fontSize = ((14 * model_2.Camera.Zoom).toString() + "px");
-                if (!equals(currentEditId, id_2)) {
-                    currentEditId = id_2;
+                if (!equals(currentEditId, id_6)) {
+                    currentEditId = id_6;
                     pendingSelfText = undefined;
                     editOverlay.value = note.Text;
                     editOverlay.focus();
@@ -306,49 +393,98 @@ function mountShell(dispatch) {
             currentEditId = undefined;
             pendingSelfText = undefined;
         }
-        pendingPaintModel = model_5;
+        const model_4 = model_7;
+        const matchValue_6 = model_4.SelectedNoteId;
+        if (matchValue_6 != null) {
+            const id_7 = matchValue_6;
+            const matchValue_7 = tryFind(id_7, model_4.Notes);
+            if (matchValue_7 != null) {
+                const note_1 = matchValue_7;
+                notePanel.style.display = "block";
+                if (!equals(currentPanelNoteId, id_7)) {
+                    currentPanelNoteId = id_7;
+                    pendingSelfTitle = undefined;
+                    pendingSelfDescription = undefined;
+                    noteTitleInput.value = note_1.Title;
+                    noteDescTextarea.value = note_1.Description;
+                }
+                else {
+                    if (pendingSelfTitle == null) {
+                        patchTextareaIfChanged(noteTitleInput, note_1.Title);
+                    }
+                    else if (pendingSelfTitle !== note_1.Title) {
+                        const pending_3 = pendingSelfTitle;
+                    }
+                    else {
+                        pendingSelfTitle = undefined;
+                    }
+                    if (pendingSelfDescription == null) {
+                        patchTextareaIfChanged(noteDescTextarea, note_1.Description);
+                    }
+                    else if (pendingSelfDescription !== note_1.Description) {
+                        const pending_5 = pendingSelfDescription;
+                    }
+                    else {
+                        pendingSelfDescription = undefined;
+                    }
+                }
+                setBadge(titleBadge, editorNameFor(model_4, id_7, "title"));
+                setBadge(descBadge, editorNameFor(model_4, id_7, "description"));
+            }
+            else {
+                notePanel.style.display = "none";
+                currentPanelNoteId = undefined;
+            }
+        }
+        else {
+            notePanel.style.display = "none";
+            currentPanelNoteId = undefined;
+            pendingSelfTitle = undefined;
+            pendingSelfDescription = undefined;
+        }
+        pendingPaintModel = model_7;
         if (!paintScheduled) {
             paintScheduled = true;
-            window.requestAnimationFrame((_arg_10) => {
-                let matchValue_7;
+            window.requestAnimationFrame((_arg_18) => {
+                let matchValue_10;
                 paintScheduled = false;
                 if (pendingPaintModel != null) {
-                    const model_3 = pendingPaintModel;
+                    const model_5 = pendingPaintModel;
                     pendingPaintModel = undefined;
                     let hoveredNoteId;
-                    const matchValue_5 = model_3.LocalCursorWorld;
-                    if (matchValue_5 == null) {
+                    const matchValue_8 = model_5.LocalCursorWorld;
+                    if (matchValue_8 == null) {
                         hoveredNoteId = undefined;
                     }
                     else {
-                        const matchValue_6 = hitTest(model_3, matchValue_5);
-                        let matchResult_1, id_3;
-                        switch (matchValue_6.tag) {
+                        const matchValue_9 = hitTest(model_5, matchValue_8);
+                        let matchResult_2, id_8;
+                        switch (matchValue_9.tag) {
                             case 1: {
-                                matchResult_1 = 0;
-                                id_3 = matchValue_6.fields[0];
+                                matchResult_2 = 0;
+                                id_8 = matchValue_9.fields[0];
                                 break;
                             }
                             case 2: {
-                                matchResult_1 = 1;
+                                matchResult_2 = 1;
                                 break;
                             }
                             default: {
-                                matchResult_1 = 0;
-                                id_3 = matchValue_6.fields[0];
+                                matchResult_2 = 0;
+                                id_8 = matchValue_9.fields[0];
                             }
                         }
-                        switch (matchResult_1) {
+                        switch (matchResult_2) {
                             case 0: {
-                                hoveredNoteId = id_3;
+                                hoveredNoteId = id_8;
                                 break;
                             }
                             default:
                                 hoveredNoteId = undefined;
                         }
                     }
-                    canvas.style.cursor = ((matchValue_7 = model_3.Drag, (matchValue_7.tag === 2) ? "grabbing" : ((matchValue_7.tag === 0) ? ((hoveredNoteId == null) ? "default" : "grab") : "grabbing")));
-                    render(canvas, model_3, hoveredNoteId);
+                    canvas.style.cursor = ((matchValue_10 = model_5.Drag, (matchValue_10.tag === 2) ? "grabbing" : ((matchValue_10.tag === 0) ? ((hoveredNoteId == null) ? "default" : "grab") : "grabbing")));
+                    render(canvas, model_5, hoveredNoteId);
                 }
             });
         }

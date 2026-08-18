@@ -33,6 +33,8 @@ let init (cfg: StartupConfig) () : Model * Cmd<Msg> =
           LastDragCommitAt = DateTime.MinValue
           Drag = NotDragging
           EditingNoteId = None
+          SelectedNoteId = None
+          MyEditingField = None
           Following = None
           Connected = false
           DebugLog = []
@@ -41,6 +43,16 @@ let init (cfg: StartupConfig) () : Model * Cmd<Msg> =
     model, Cmd.none
 
 let private maxDebugEntries = 150
+
+/// Fires an awareness update outside the usual throttled heartbeat, for low-frequency,
+/// high-value events (starting/stopping editing a field) where a several-hundred-ms delay
+/// before the "X is typing here" badge appears/disappears would feel laggy. Focus changes are
+/// rare enough that sending immediately is not a chattiness concern the way per-pixel cursor
+/// movement would be.
+let private sendAwarenessNow (model: Model) =
+    match model.Me with
+    | Some me -> Doc.sendAwareness (Awareness.encodePresence me model.MyName model.MyColor model.LocalCursorWorld model.MyEditingField)
+    | None -> ()
 
 let update (msg: Msg) (model: Model) : Model * Cmd<Msg> =
     match msg with
@@ -61,7 +73,7 @@ let update (msg: Msg) (model: Model) : Model * Cmd<Msg> =
 
     | AwarenessReceived json ->
         match Awareness.tryDecode json with
-        | Some(Awareness.Presence(id, name, color, cursor)) when Some id <> model.Me ->
+        | Some(Awareness.Presence(id, name, color, cursor, editing)) when Some id <> model.Me ->
             let initial =
                 if name.Length > 0 then
                     string (Char.ToUpper name.[0])
@@ -74,6 +86,7 @@ let update (msg: Msg) (model: Model) : Model * Cmd<Msg> =
                   Initial = initial
                   Color = color
                   Cursor = cursor
+                  Editing = editing
                   LastSeen = DateTime.Now }
 
             let newCamera =
@@ -106,11 +119,11 @@ let update (msg: Msg) (model: Model) : Model * Cmd<Msg> =
                 match Map.tryFind id model.Notes with
                 | Some note ->
                     let drag = DraggingNote(id, worldPoint.X - note.X, worldPoint.Y - note.Y)
-                    { model with Drag = drag }, Cmd.none
+                    { model with Drag = drag; SelectedNoteId = Some id }, Cmd.none
                 | None -> model, Cmd.none
             | Canvas.HitNothing ->
                 let drag = PanningCamera(screenPoint, { X = model.Camera.X; Y = model.Camera.Y })
-                { model with Drag = drag; Following = None }, Cmd.none
+                { model with Drag = drag; Following = None; SelectedNoteId = None }, Cmd.none
         else
             model, Cmd.none
 
@@ -176,7 +189,14 @@ let update (msg: Msg) (model: Model) : Model * Cmd<Msg> =
 
         match Canvas.hitTest model worldPoint with
         | Canvas.HitNote id
-        | Canvas.HitDeleteButton id -> { model with EditingNoteId = Some id }, Cmd.none
+        | Canvas.HitDeleteButton id ->
+            let newModel =
+                { model with
+                    EditingNoteId = Some id
+                    MyEditingField = Some(id, "text") }
+
+            sendAwarenessNow newModel
+            newModel, Cmd.none
         | Canvas.HitNothing -> model, Cmd.none
 
     | Wheel(screenPoint, deltaY) ->
@@ -197,9 +217,17 @@ let update (msg: Msg) (model: Model) : Model * Cmd<Msg> =
     | DeleteNote id ->
         Doc.deleteNote id
         let editing = if model.EditingNoteId = Some id then None else model.EditingNoteId
-        { model with EditingNoteId = editing }, Cmd.none
+        let selected = if model.SelectedNoteId = Some id then None else model.SelectedNoteId
+        { model with EditingNoteId = editing; SelectedNoteId = selected }, Cmd.none
 
-    | StartEditNote id -> { model with EditingNoteId = Some id }, Cmd.none
+    | StartEditNote id ->
+        let newModel =
+            { model with
+                EditingNoteId = Some id
+                MyEditingField = Some(id, "text") }
+
+        sendAwarenessNow newModel
+        newModel, Cmd.none
 
     | EditNoteText(id, newText) ->
         match Map.tryFind id model.Notes with
@@ -208,7 +236,10 @@ let update (msg: Msg) (model: Model) : Model * Cmd<Msg> =
 
         model, Cmd.none
 
-    | StopEditNote -> { model with EditingNoteId = None }, Cmd.none
+    | StopEditNote ->
+        let newModel = { model with EditingNoteId = None; MyEditingField = None }
+        sendAwarenessNow newModel
+        newModel, Cmd.none
 
     | ToggleFollow clientId ->
         let following = if model.Following = Some clientId then None else Some clientId
@@ -234,7 +265,9 @@ let update (msg: Msg) (model: Model) : Model * Cmd<Msg> =
             let staleKeepAlive = (now - model.LastHeartbeatAt).TotalMilliseconds > 1000.0
 
             if moved || staleKeepAlive then
-                let json = Awareness.encodePresence me model.MyName model.MyColor model.LocalCursorWorld
+                let json =
+                    Awareness.encodePresence me model.MyName model.MyColor model.LocalCursorWorld model.MyEditingField
+
                 Doc.sendAwareness json
 
                 { model with
@@ -265,3 +298,21 @@ let update (msg: Msg) (model: Model) : Model * Cmd<Msg> =
               Detail = detail }
 
         { model with DebugLog = entry :: model.DebugLog |> List.truncate maxDebugEntries }, Cmd.none
+
+    | SelectNote idOpt -> { model with SelectedNoteId = idOpt }, Cmd.none
+
+    | SetNoteTitle(id, title) ->
+        Doc.setNoteTitle id title
+        model, Cmd.none
+
+    | EditNoteDescription(id, newDescription) ->
+        match Map.tryFind id model.Notes with
+        | Some note -> Doc.editNoteDescription id note.Description newDescription
+        | None -> ()
+
+        model, Cmd.none
+
+    | SetEditingField fieldOpt ->
+        let newModel = { model with MyEditingField = fieldOpt }
+        sendAwarenessNow newModel
+        newModel, Cmd.none

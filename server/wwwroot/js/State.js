@@ -7,10 +7,10 @@ import { cons, truncate, map, empty as empty_1 } from "./fable_modules/fable-lib
 import { DebugEntry, NoteSnapshot, Vec2, PresenceInfo, Model, DragState, Camera } from "./Types.js";
 import { op_Subtraction, now as now_2, minValue } from "./fable_modules/fable-library-js.5.13.0/Date.js";
 import { Cmd_none } from "./fable_modules/Fable.Elmish.5.0.2/cmd.fs.js";
-import { encodePresence, tryDecode } from "./Awareness.js";
+import { editNoteDescription, setNoteTitle, redo, undo, editNoteText, addNote, moveNote, deleteNote, sendAwareness } from "./Doc.js";
+import { tryDecode, encodePresence } from "./Awareness.js";
 import { zoomAt, screenToWorld, centerOn } from "./Camera.js";
 import { hitTest } from "./Canvas.js";
-import { redo, undo, sendAwareness, editNoteText, addNote, moveNote, deleteNote } from "./Doc.js";
 
 export class StartupConfig extends Record {
     constructor(Name, Color, ClientId) {
@@ -30,34 +30,44 @@ export function init(cfg, unitVar) {
         Compare: (x, y) => (comparePrimitives(x, y) | 0),
     }), empty_1(), empty({
         Compare: (x_1, y_1) => (comparePrimitives(x_1, y_1) | 0),
-    }), new Camera(0, 0, 1), window.innerWidth, window.innerHeight, undefined, undefined, minValue(), minValue(), DragState.NotDragging, undefined, undefined, false, empty_1(), true), Cmd_none()];
+    }), new Camera(0, 0, 1), window.innerWidth, window.innerHeight, undefined, undefined, minValue(), minValue(), DragState.NotDragging, undefined, undefined, undefined, undefined, false, empty_1(), true), Cmd_none()];
 }
 
 const maxDebugEntries = 150;
+
+function sendAwarenessNow(model) {
+    const matchValue = model.Me;
+    if (matchValue == null) {
+    }
+    else {
+        sendAwareness(encodePresence(matchValue, model.MyName, model.MyColor, model.LocalCursorWorld, model.MyEditingField));
+    }
+}
 
 export function update(msg, model) {
     let matchValue, id_1;
     switch (msg.tag) {
         case 1:
-            return [new Model(model.Me, model.MyName, model.MyColor, model.Notes, model.NoteOrder, model.Presence, model.Camera, model.ViewportW, model.ViewportH, model.LocalCursorWorld, model.LastSentCursor, model.LastHeartbeatAt, model.LastDragCommitAt, model.Drag, model.EditingNoteId, model.Following, false, model.DebugLog, model.DebugOpen), Cmd_none()];
+            return [new Model(model.Me, model.MyName, model.MyColor, model.Notes, model.NoteOrder, model.Presence, model.Camera, model.ViewportW, model.ViewportH, model.LocalCursorWorld, model.LastSentCursor, model.LastHeartbeatAt, model.LastDragCommitAt, model.Drag, model.EditingNoteId, model.SelectedNoteId, model.MyEditingField, model.Following, false, model.DebugLog, model.DebugOpen), Cmd_none()];
         case 3: {
             const notesMap = ofList(map((n) => [n.Id, n], msg.fields[0]), {
                 Compare: (x, y) => (comparePrimitives(x, y) | 0),
             });
-            return [new Model(model.Me, model.MyName, model.MyColor, notesMap, msg.fields[1], model.Presence, model.Camera, model.ViewportW, model.ViewportH, model.LocalCursorWorld, model.LastSentCursor, model.LastHeartbeatAt, model.LastDragCommitAt, model.Drag, (matchValue = model.EditingNoteId, (matchValue != null) ? (!containsKey(matchValue, notesMap) ? ((id_1 = matchValue, undefined)) : matchValue) : matchValue), model.Following, model.Connected, model.DebugLog, model.DebugOpen), Cmd_none()];
+            return [new Model(model.Me, model.MyName, model.MyColor, notesMap, msg.fields[1], model.Presence, model.Camera, model.ViewportW, model.ViewportH, model.LocalCursorWorld, model.LastSentCursor, model.LastHeartbeatAt, model.LastDragCommitAt, model.Drag, (matchValue = model.EditingNoteId, (matchValue != null) ? (!containsKey(matchValue, notesMap) ? ((id_1 = matchValue, undefined)) : matchValue) : matchValue), model.SelectedNoteId, model.MyEditingField, model.Following, model.Connected, model.DebugLog, model.DebugOpen), Cmd_none()];
         }
         case 2: {
             const matchValue_1 = tryDecode(msg.fields[0]);
-            let matchResult, color_1, cursor_1, id_3, name_1, id_4;
+            let matchResult, color_1, cursor_1, editing_2, id_3, name_1, id_4;
             if (matchValue_1 != null) {
                 if (matchValue_1.tag === 1) {
                     matchResult = 1;
                     id_4 = matchValue_1.fields[0];
                 }
-                else if ((matchValue_1.fields[1], matchValue_1.fields[3], matchValue_1.fields[2], !equals(matchValue_1.fields[0], model.Me))) {
+                else if ((matchValue_1.fields[1], matchValue_1.fields[4], matchValue_1.fields[3], matchValue_1.fields[2], !equals(matchValue_1.fields[0], model.Me))) {
                     matchResult = 0;
                     color_1 = matchValue_1.fields[2];
                     cursor_1 = matchValue_1.fields[3];
+                    editing_2 = matchValue_1.fields[4];
                     id_3 = matchValue_1.fields[0];
                     name_1 = matchValue_1.fields[1];
                 }
@@ -70,7 +80,7 @@ export function update(msg, model) {
             }
             switch (matchResult) {
                 case 0: {
-                    const info = new PresenceInfo(id_3, name_1, (name_1.length > 0) ? name_1[0].toLocaleUpperCase() : "?", color_1, cursor_1, now_2());
+                    const info = new PresenceInfo(id_3, name_1, (name_1.length > 0) ? name_1[0].toLocaleUpperCase() : "?", color_1, cursor_1, editing_2, now_2());
                     let newCamera;
                     const matchValue_2 = model.Following;
                     let matchResult_1, c_1, followId_1;
@@ -100,11 +110,11 @@ export function update(msg, model) {
                         default:
                             newCamera = model.Camera;
                     }
-                    return [new Model(model.Me, model.MyName, model.MyColor, model.Notes, model.NoteOrder, add(id_3, info, model.Presence), newCamera, model.ViewportW, model.ViewportH, model.LocalCursorWorld, model.LastSentCursor, model.LastHeartbeatAt, model.LastDragCommitAt, model.Drag, model.EditingNoteId, model.Following, model.Connected, model.DebugLog, model.DebugOpen), Cmd_none()];
+                    return [new Model(model.Me, model.MyName, model.MyColor, model.Notes, model.NoteOrder, add(id_3, info, model.Presence), newCamera, model.ViewportW, model.ViewportH, model.LocalCursorWorld, model.LastSentCursor, model.LastHeartbeatAt, model.LastDragCommitAt, model.Drag, model.EditingNoteId, model.SelectedNoteId, model.MyEditingField, model.Following, model.Connected, model.DebugLog, model.DebugOpen), Cmd_none()];
                 }
                 case 1: {
                     const following = equals(model.Following, id_4) ? undefined : model.Following;
-                    return [new Model(model.Me, model.MyName, model.MyColor, model.Notes, model.NoteOrder, remove(id_4, model.Presence), model.Camera, model.ViewportW, model.ViewportH, model.LocalCursorWorld, model.LastSentCursor, model.LastHeartbeatAt, model.LastDragCommitAt, model.Drag, model.EditingNoteId, following, model.Connected, model.DebugLog, model.DebugOpen), Cmd_none()];
+                    return [new Model(model.Me, model.MyName, model.MyColor, model.Notes, model.NoteOrder, remove(id_4, model.Presence), model.Camera, model.ViewportW, model.ViewportH, model.LocalCursorWorld, model.LastSentCursor, model.LastHeartbeatAt, model.LastDragCommitAt, model.Drag, model.EditingNoteId, model.SelectedNoteId, model.MyEditingField, following, model.Connected, model.DebugLog, model.DebugOpen), Cmd_none()];
                 }
                 default:
                     return [model, Cmd_none()];
@@ -124,11 +134,11 @@ export function update(msg, model) {
                         }
                         else {
                             const note = matchValue_5;
-                            return [new Model(model.Me, model.MyName, model.MyColor, model.Notes, model.NoteOrder, model.Presence, model.Camera, model.ViewportW, model.ViewportH, model.LocalCursorWorld, model.LastSentCursor, model.LastHeartbeatAt, model.LastDragCommitAt, new DragState(/* DraggingNote */ 1, [id_6, worldPoint.X - note.X, worldPoint.Y - note.Y]), model.EditingNoteId, model.Following, model.Connected, model.DebugLog, model.DebugOpen), Cmd_none()];
+                            return [new Model(model.Me, model.MyName, model.MyColor, model.Notes, model.NoteOrder, model.Presence, model.Camera, model.ViewportW, model.ViewportH, model.LocalCursorWorld, model.LastSentCursor, model.LastHeartbeatAt, model.LastDragCommitAt, new DragState(/* DraggingNote */ 1, [id_6, worldPoint.X - note.X, worldPoint.Y - note.Y]), model.EditingNoteId, id_6, model.MyEditingField, model.Following, model.Connected, model.DebugLog, model.DebugOpen), Cmd_none()];
                         }
                     }
                     case 2:
-                        return [new Model(model.Me, model.MyName, model.MyColor, model.Notes, model.NoteOrder, model.Presence, model.Camera, model.ViewportW, model.ViewportH, model.LocalCursorWorld, model.LastSentCursor, model.LastHeartbeatAt, model.LastDragCommitAt, new DragState(/* PanningCamera */ 2, [screenPoint, new Vec2(model.Camera.X, model.Camera.Y)]), model.EditingNoteId, undefined, model.Connected, model.DebugLog, model.DebugOpen), Cmd_none()];
+                        return [new Model(model.Me, model.MyName, model.MyColor, model.Notes, model.NoteOrder, model.Presence, model.Camera, model.ViewportW, model.ViewportH, model.LocalCursorWorld, model.LastSentCursor, model.LastHeartbeatAt, model.LastDragCommitAt, new DragState(/* PanningCamera */ 2, [screenPoint, new Vec2(model.Camera.X, model.Camera.Y)]), model.EditingNoteId, undefined, model.MyEditingField, undefined, model.Connected, model.DebugLog, model.DebugOpen), Cmd_none()];
                     default: {
                         deleteNote(matchValue_4.fields[0]);
                         return [model, Cmd_none()];
@@ -147,10 +157,10 @@ export function update(msg, model) {
                 case 2: {
                     const startScreen = matchValue_6.fields[0];
                     const startCam = matchValue_6.fields[1];
-                    return [new Model(model.Me, model.MyName, model.MyColor, model.Notes, model.NoteOrder, model.Presence, new Camera(startCam.X - ((screenPoint_1.X - startScreen.X) / model.Camera.Zoom), startCam.Y - ((screenPoint_1.Y - startScreen.Y) / model.Camera.Zoom), model.Camera.Zoom), model.ViewportW, model.ViewportH, worldPoint_1, model.LastSentCursor, model.LastHeartbeatAt, model.LastDragCommitAt, model.Drag, model.EditingNoteId, model.Following, model.Connected, model.DebugLog, model.DebugOpen), Cmd_none()];
+                    return [new Model(model.Me, model.MyName, model.MyColor, model.Notes, model.NoteOrder, model.Presence, new Camera(startCam.X - ((screenPoint_1.X - startScreen.X) / model.Camera.Zoom), startCam.Y - ((screenPoint_1.Y - startScreen.Y) / model.Camera.Zoom), model.Camera.Zoom), model.ViewportW, model.ViewportH, worldPoint_1, model.LastSentCursor, model.LastHeartbeatAt, model.LastDragCommitAt, model.Drag, model.EditingNoteId, model.SelectedNoteId, model.MyEditingField, model.Following, model.Connected, model.DebugLog, model.DebugOpen), Cmd_none()];
                 }
                 case 0:
-                    return [new Model(model.Me, model.MyName, model.MyColor, model.Notes, model.NoteOrder, model.Presence, model.Camera, model.ViewportW, model.ViewportH, worldPoint_1, model.LastSentCursor, model.LastHeartbeatAt, model.LastDragCommitAt, model.Drag, model.EditingNoteId, model.Following, model.Connected, model.DebugLog, model.DebugOpen), Cmd_none()];
+                    return [new Model(model.Me, model.MyName, model.MyColor, model.Notes, model.NoteOrder, model.Presence, model.Camera, model.ViewportW, model.ViewportH, worldPoint_1, model.LastSentCursor, model.LastHeartbeatAt, model.LastDragCommitAt, model.Drag, model.EditingNoteId, model.SelectedNoteId, model.MyEditingField, model.Following, model.Connected, model.DebugLog, model.DebugOpen), Cmd_none()];
                 default: {
                     const id_7 = matchValue_6.fields[0];
                     const newY = worldPoint_1.Y - matchValue_6.fields[2];
@@ -162,15 +172,15 @@ export function update(msg, model) {
                     }
                     else {
                         const note_1 = matchValue_9;
-                        optimisticNotes = add(id_7, new NoteSnapshot(note_1.Id, newX, newY, note_1.W, note_1.H, note_1.Color, note_1.Text), model.Notes);
+                        optimisticNotes = add(id_7, new NoteSnapshot(note_1.Id, newX, newY, note_1.W, note_1.H, note_1.Color, note_1.Text, note_1.Title, note_1.Description), model.Notes);
                     }
                     const now = now_2();
                     if (op_Subtraction(now, model.LastDragCommitAt) > 40) {
                         moveNote(id_7, newX, newY);
-                        return [new Model(model.Me, model.MyName, model.MyColor, optimisticNotes, model.NoteOrder, model.Presence, model.Camera, model.ViewportW, model.ViewportH, worldPoint_1, model.LastSentCursor, model.LastHeartbeatAt, now, model.Drag, model.EditingNoteId, model.Following, model.Connected, model.DebugLog, model.DebugOpen), Cmd_none()];
+                        return [new Model(model.Me, model.MyName, model.MyColor, optimisticNotes, model.NoteOrder, model.Presence, model.Camera, model.ViewportW, model.ViewportH, worldPoint_1, model.LastSentCursor, model.LastHeartbeatAt, now, model.Drag, model.EditingNoteId, model.SelectedNoteId, model.MyEditingField, model.Following, model.Connected, model.DebugLog, model.DebugOpen), Cmd_none()];
                     }
                     else {
-                        return [new Model(model.Me, model.MyName, model.MyColor, optimisticNotes, model.NoteOrder, model.Presence, model.Camera, model.ViewportW, model.ViewportH, worldPoint_1, model.LastSentCursor, model.LastHeartbeatAt, model.LastDragCommitAt, model.Drag, model.EditingNoteId, model.Following, model.Connected, model.DebugLog, model.DebugOpen), Cmd_none()];
+                        return [new Model(model.Me, model.MyName, model.MyColor, optimisticNotes, model.NoteOrder, model.Presence, model.Camera, model.ViewportW, model.ViewportH, worldPoint_1, model.LastSentCursor, model.LastHeartbeatAt, model.LastDragCommitAt, model.Drag, model.EditingNoteId, model.SelectedNoteId, model.MyEditingField, model.Following, model.Connected, model.DebugLog, model.DebugOpen), Cmd_none()];
                     }
                 }
             }
@@ -187,7 +197,7 @@ export function update(msg, model) {
                     moveNote(id_8, note_2.X, note_2.Y);
                 }
             }
-            return [new Model(model.Me, model.MyName, model.MyColor, model.Notes, model.NoteOrder, model.Presence, model.Camera, model.ViewportW, model.ViewportH, model.LocalCursorWorld, model.LastSentCursor, model.LastHeartbeatAt, model.LastDragCommitAt, DragState.NotDragging, model.EditingNoteId, model.Following, model.Connected, model.DebugLog, model.DebugOpen), Cmd_none()];
+            return [new Model(model.Me, model.MyName, model.MyColor, model.Notes, model.NoteOrder, model.Presence, model.Camera, model.ViewportW, model.ViewportH, model.LocalCursorWorld, model.LastSentCursor, model.LastHeartbeatAt, model.LastDragCommitAt, DragState.NotDragging, model.EditingNoteId, model.SelectedNoteId, model.MyEditingField, model.Following, model.Connected, model.DebugLog, model.DebugOpen), Cmd_none()];
         }
         case 7: {
             const matchValue_12 = hitTest(model, screenToWorld(model.Camera, msg.fields[0]));
@@ -208,16 +218,19 @@ export function update(msg, model) {
                 }
             }
             switch (matchResult_2) {
-                case 0:
-                    return [new Model(model.Me, model.MyName, model.MyColor, model.Notes, model.NoteOrder, model.Presence, model.Camera, model.ViewportW, model.ViewportH, model.LocalCursorWorld, model.LastSentCursor, model.LastHeartbeatAt, model.LastDragCommitAt, model.Drag, id_9, model.Following, model.Connected, model.DebugLog, model.DebugOpen), Cmd_none()];
+                case 0: {
+                    const newModel = new Model(model.Me, model.MyName, model.MyColor, model.Notes, model.NoteOrder, model.Presence, model.Camera, model.ViewportW, model.ViewportH, model.LocalCursorWorld, model.LastSentCursor, model.LastHeartbeatAt, model.LastDragCommitAt, model.Drag, id_9, model.SelectedNoteId, [id_9, "text"], model.Following, model.Connected, model.DebugLog, model.DebugOpen);
+                    sendAwarenessNow(newModel);
+                    return [newModel, Cmd_none()];
+                }
                 default:
                     return [model, Cmd_none()];
             }
         }
         case 8:
-            return [new Model(model.Me, model.MyName, model.MyColor, model.Notes, model.NoteOrder, model.Presence, zoomAt(msg.fields[0], Math.exp(-msg.fields[1] * 0.001), model.Camera), model.ViewportW, model.ViewportH, model.LocalCursorWorld, model.LastSentCursor, model.LastHeartbeatAt, model.LastDragCommitAt, model.Drag, model.EditingNoteId, undefined, model.Connected, model.DebugLog, model.DebugOpen), Cmd_none()];
+            return [new Model(model.Me, model.MyName, model.MyColor, model.Notes, model.NoteOrder, model.Presence, zoomAt(msg.fields[0], Math.exp(-msg.fields[1] * 0.001), model.Camera), model.ViewportW, model.ViewportH, model.LocalCursorWorld, model.LastSentCursor, model.LastHeartbeatAt, model.LastDragCommitAt, model.Drag, model.EditingNoteId, model.SelectedNoteId, model.MyEditingField, undefined, model.Connected, model.DebugLog, model.DebugOpen), Cmd_none()];
         case 9:
-            return [new Model(model.Me, model.MyName, model.MyColor, model.Notes, model.NoteOrder, model.Presence, model.Camera, msg.fields[0], msg.fields[1], model.LocalCursorWorld, model.LastSentCursor, model.LastHeartbeatAt, model.LastDragCommitAt, model.Drag, model.EditingNoteId, model.Following, model.Connected, model.DebugLog, model.DebugOpen), Cmd_none()];
+            return [new Model(model.Me, model.MyName, model.MyColor, model.Notes, model.NoteOrder, model.Presence, model.Camera, msg.fields[0], msg.fields[1], model.LocalCursorWorld, model.LastSentCursor, model.LastHeartbeatAt, model.LastDragCommitAt, model.Drag, model.EditingNoteId, model.SelectedNoteId, model.MyEditingField, model.Following, model.Connected, model.DebugLog, model.DebugOpen), Cmd_none()];
         case 10: {
             const center = screenToWorld(model.Camera, new Vec2(model.ViewportW / 2, model.ViewportH / 2));
             const jitter = (Math.random() - 0.5) * 60;
@@ -227,10 +240,14 @@ export function update(msg, model) {
         case 11: {
             const id_10 = msg.fields[0];
             deleteNote(id_10);
-            return [new Model(model.Me, model.MyName, model.MyColor, model.Notes, model.NoteOrder, model.Presence, model.Camera, model.ViewportW, model.ViewportH, model.LocalCursorWorld, model.LastSentCursor, model.LastHeartbeatAt, model.LastDragCommitAt, model.Drag, equals(model.EditingNoteId, id_10) ? undefined : model.EditingNoteId, model.Following, model.Connected, model.DebugLog, model.DebugOpen), Cmd_none()];
+            return [new Model(model.Me, model.MyName, model.MyColor, model.Notes, model.NoteOrder, model.Presence, model.Camera, model.ViewportW, model.ViewportH, model.LocalCursorWorld, model.LastSentCursor, model.LastHeartbeatAt, model.LastDragCommitAt, model.Drag, equals(model.EditingNoteId, id_10) ? undefined : model.EditingNoteId, equals(model.SelectedNoteId, id_10) ? undefined : model.SelectedNoteId, model.MyEditingField, model.Following, model.Connected, model.DebugLog, model.DebugOpen), Cmd_none()];
         }
-        case 12:
-            return [new Model(model.Me, model.MyName, model.MyColor, model.Notes, model.NoteOrder, model.Presence, model.Camera, model.ViewportW, model.ViewportH, model.LocalCursorWorld, model.LastSentCursor, model.LastHeartbeatAt, model.LastDragCommitAt, model.Drag, msg.fields[0], model.Following, model.Connected, model.DebugLog, model.DebugOpen), Cmd_none()];
+        case 12: {
+            const id_11 = msg.fields[0];
+            const newModel_1 = new Model(model.Me, model.MyName, model.MyColor, model.Notes, model.NoteOrder, model.Presence, model.Camera, model.ViewportW, model.ViewportH, model.LocalCursorWorld, model.LastSentCursor, model.LastHeartbeatAt, model.LastDragCommitAt, model.Drag, id_11, model.SelectedNoteId, [id_11, "text"], model.Following, model.Connected, model.DebugLog, model.DebugOpen);
+            sendAwarenessNow(newModel_1);
+            return [newModel_1, Cmd_none()];
+        }
         case 13: {
             const id_12 = msg.fields[0];
             const matchValue_13 = tryFind(id_12, model.Notes);
@@ -241,14 +258,17 @@ export function update(msg, model) {
             }
             return [model, Cmd_none()];
         }
-        case 14:
-            return [new Model(model.Me, model.MyName, model.MyColor, model.Notes, model.NoteOrder, model.Presence, model.Camera, model.ViewportW, model.ViewportH, model.LocalCursorWorld, model.LastSentCursor, model.LastHeartbeatAt, model.LastDragCommitAt, model.Drag, undefined, model.Following, model.Connected, model.DebugLog, model.DebugOpen), Cmd_none()];
+        case 14: {
+            const newModel_2 = new Model(model.Me, model.MyName, model.MyColor, model.Notes, model.NoteOrder, model.Presence, model.Camera, model.ViewportW, model.ViewportH, model.LocalCursorWorld, model.LastSentCursor, model.LastHeartbeatAt, model.LastDragCommitAt, model.Drag, undefined, model.SelectedNoteId, undefined, model.Following, model.Connected, model.DebugLog, model.DebugOpen);
+            sendAwarenessNow(newModel_2);
+            return [newModel_2, Cmd_none()];
+        }
         case 15: {
             const clientId = msg.fields[0];
-            return [new Model(model.Me, model.MyName, model.MyColor, model.Notes, model.NoteOrder, model.Presence, model.Camera, model.ViewportW, model.ViewportH, model.LocalCursorWorld, model.LastSentCursor, model.LastHeartbeatAt, model.LastDragCommitAt, model.Drag, model.EditingNoteId, equals(model.Following, clientId) ? undefined : clientId, model.Connected, model.DebugLog, model.DebugOpen), Cmd_none()];
+            return [new Model(model.Me, model.MyName, model.MyColor, model.Notes, model.NoteOrder, model.Presence, model.Camera, model.ViewportW, model.ViewportH, model.LocalCursorWorld, model.LastSentCursor, model.LastHeartbeatAt, model.LastDragCommitAt, model.Drag, model.EditingNoteId, model.SelectedNoteId, model.MyEditingField, equals(model.Following, clientId) ? undefined : clientId, model.Connected, model.DebugLog, model.DebugOpen), Cmd_none()];
         }
         case 16:
-            return [new Model(model.Me, model.MyName, model.MyColor, model.Notes, model.NoteOrder, model.Presence, model.Camera, model.ViewportW, model.ViewportH, model.LocalCursorWorld, model.LastSentCursor, model.LastHeartbeatAt, model.LastDragCommitAt, model.Drag, model.EditingNoteId, model.Following, model.Connected, model.DebugLog, !model.DebugOpen), Cmd_none()];
+            return [new Model(model.Me, model.MyName, model.MyColor, model.Notes, model.NoteOrder, model.Presence, model.Camera, model.ViewportW, model.ViewportH, model.LocalCursorWorld, model.LastSentCursor, model.LastHeartbeatAt, model.LastDragCommitAt, model.Drag, model.EditingNoteId, model.SelectedNoteId, model.MyEditingField, model.Following, model.Connected, model.DebugLog, !model.DebugOpen), Cmd_none()];
         case 17: {
             const matchValue_14 = model.Me;
             let matchResult_3, me_1;
@@ -301,8 +321,8 @@ export function update(msg, model) {
                     }
                     const staleKeepAlive = op_Subtraction(now_1, model.LastHeartbeatAt) > 1000;
                     if (moved ? true : staleKeepAlive) {
-                        sendAwareness(encodePresence(me_1, model.MyName, model.MyColor, model.LocalCursorWorld));
-                        return [new Model(model.Me, model.MyName, model.MyColor, model.Notes, model.NoteOrder, model.Presence, model.Camera, model.ViewportW, model.ViewportH, model.LocalCursorWorld, model.LocalCursorWorld, now_1, model.LastDragCommitAt, model.Drag, model.EditingNoteId, model.Following, model.Connected, model.DebugLog, model.DebugOpen), Cmd_none()];
+                        sendAwareness(encodePresence(me_1, model.MyName, model.MyColor, model.LocalCursorWorld, model.MyEditingField));
+                        return [new Model(model.Me, model.MyName, model.MyColor, model.Notes, model.NoteOrder, model.Presence, model.Camera, model.ViewportW, model.ViewportH, model.LocalCursorWorld, model.LocalCursorWorld, now_1, model.LastDragCommitAt, model.Drag, model.EditingNoteId, model.SelectedNoteId, model.MyEditingField, model.Following, model.Connected, model.DebugLog, model.DebugOpen), Cmd_none()];
                     }
                     else {
                         return [model, Cmd_none()];
@@ -322,12 +342,33 @@ export function update(msg, model) {
         }
         case 19: {
             const trimmed = msg.fields[0].trim();
-            return [new Model(model.Me, (trimmed === "") ? model.MyName : trimmed, model.MyColor, model.Notes, model.NoteOrder, model.Presence, model.Camera, model.ViewportW, model.ViewportH, model.LocalCursorWorld, model.LastSentCursor, model.LastHeartbeatAt, model.LastDragCommitAt, model.Drag, model.EditingNoteId, model.Following, model.Connected, model.DebugLog, model.DebugOpen), Cmd_none()];
+            return [new Model(model.Me, (trimmed === "") ? model.MyName : trimmed, model.MyColor, model.Notes, model.NoteOrder, model.Presence, model.Camera, model.ViewportW, model.ViewportH, model.LocalCursorWorld, model.LastSentCursor, model.LastHeartbeatAt, model.LastDragCommitAt, model.Drag, model.EditingNoteId, model.SelectedNoteId, model.MyEditingField, model.Following, model.Connected, model.DebugLog, model.DebugOpen), Cmd_none()];
         }
         case 18:
-            return [new Model(model.Me, model.MyName, model.MyColor, model.Notes, model.NoteOrder, model.Presence, model.Camera, model.ViewportW, model.ViewportH, model.LocalCursorWorld, model.LastSentCursor, model.LastHeartbeatAt, model.LastDragCommitAt, model.Drag, model.EditingNoteId, model.Following, model.Connected, truncate(maxDebugEntries, cons(new DebugEntry(now_2(), msg.fields[0], msg.fields[1], msg.fields[2]), model.DebugLog)), model.DebugOpen), Cmd_none()];
+            return [new Model(model.Me, model.MyName, model.MyColor, model.Notes, model.NoteOrder, model.Presence, model.Camera, model.ViewportW, model.ViewportH, model.LocalCursorWorld, model.LastSentCursor, model.LastHeartbeatAt, model.LastDragCommitAt, model.Drag, model.EditingNoteId, model.SelectedNoteId, model.MyEditingField, model.Following, model.Connected, truncate(maxDebugEntries, cons(new DebugEntry(now_2(), msg.fields[0], msg.fields[1], msg.fields[2]), model.DebugLog)), model.DebugOpen), Cmd_none()];
+        case 22:
+            return [new Model(model.Me, model.MyName, model.MyColor, model.Notes, model.NoteOrder, model.Presence, model.Camera, model.ViewportW, model.ViewportH, model.LocalCursorWorld, model.LastSentCursor, model.LastHeartbeatAt, model.LastDragCommitAt, model.Drag, model.EditingNoteId, msg.fields[0], model.MyEditingField, model.Following, model.Connected, model.DebugLog, model.DebugOpen), Cmd_none()];
+        case 23: {
+            setNoteTitle(msg.fields[0], msg.fields[1]);
+            return [model, Cmd_none()];
+        }
+        case 24: {
+            const id_14 = msg.fields[0];
+            const matchValue_18 = tryFind(id_14, model.Notes);
+            if (matchValue_18 == null) {
+            }
+            else {
+                editNoteDescription(id_14, matchValue_18.Description, msg.fields[1]);
+            }
+            return [model, Cmd_none()];
+        }
+        case 25: {
+            const newModel_3 = new Model(model.Me, model.MyName, model.MyColor, model.Notes, model.NoteOrder, model.Presence, model.Camera, model.ViewportW, model.ViewportH, model.LocalCursorWorld, model.LastSentCursor, model.LastHeartbeatAt, model.LastDragCommitAt, model.Drag, model.EditingNoteId, model.SelectedNoteId, msg.fields[0], model.Following, model.Connected, model.DebugLog, model.DebugOpen);
+            sendAwarenessNow(newModel_3);
+            return [newModel_3, Cmd_none()];
+        }
         default:
-            return [new Model(model.Me, model.MyName, model.MyColor, model.Notes, model.NoteOrder, model.Presence, model.Camera, model.ViewportW, model.ViewportH, model.LocalCursorWorld, model.LastSentCursor, model.LastHeartbeatAt, model.LastDragCommitAt, model.Drag, model.EditingNoteId, model.Following, true, model.DebugLog, model.DebugOpen), Cmd_none()];
+            return [new Model(model.Me, model.MyName, model.MyColor, model.Notes, model.NoteOrder, model.Presence, model.Camera, model.ViewportW, model.ViewportH, model.LocalCursorWorld, model.LastSentCursor, model.LastHeartbeatAt, model.LastDragCommitAt, model.Drag, model.EditingNoteId, model.SelectedNoteId, model.MyEditingField, model.Following, true, model.DebugLog, model.DebugOpen), Cmd_none()];
     }
 }
 

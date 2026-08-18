@@ -10,6 +10,13 @@ type ClientId = float
 
 type Vec2 = { X: float; Y: float }
 
+/// (noteId, field) - which field of which note someone is currently focused in, if any.
+/// `field` is one of "text" | "title" | "description". Deliberately coarse: we only ever say
+/// *that* someone is editing a field, never *where* their caret is inside it - see
+/// docs/03-fallstricke.md #6 for why a precise in-text cursor would need a real editor engine
+/// (ProseMirror/CodeMirror-class), not a plain <textarea>/<input>.
+type EditingRef = string * string
+
 type NoteColor =
     | Yellow
     | Pink
@@ -57,7 +64,13 @@ type NoteSnapshot =
       W: float
       H: float
       Color: NoteColor
-      Text: string }
+      Text: string
+      /// LWW plain value (not Y.Text) - short, low collision-risk, deliberately coarse-grained.
+      /// See docs/02-architektur-muster.md #6: not every field needs character-level merge.
+      Title: string
+      /// Real Y.Text, same co-editing treatment as `Text` - a second, independent field on the
+      /// same note, so editing the title/description/body never conflicts across the three.
+      Description: string }
 
 type PresenceInfo =
     { ClientId: ClientId
@@ -68,6 +81,10 @@ type PresenceInfo =
       /// "follow" converges on the same spot regardless of the other user's own
       /// zoom/pan/window size.
       Cursor: Vec2 option
+      /// Which field of which note this person currently has focused, if any - drives the
+      /// small "X is typing here" badge. Deliberately no in-text caret position - see
+      /// EditingRef above.
+      Editing: EditingRef option
       LastSeen: DateTime }
 
 type Camera = { X: float; Y: float; Zoom: float }
@@ -104,6 +121,12 @@ type Model =
       LastDragCommitAt: DateTime
       Drag: DragState
       EditingNoteId: string option
+      /// Which note's detail panel (title/description) is open - independent of EditingNoteId,
+      /// which is only for the sticky-note body's own <canvas>-overlay editor.
+      SelectedNoteId: string option
+      /// What I myself currently have focused, broadcast to everyone else so they can show
+      /// their own "X is typing here" badge - see EditingRef.
+      MyEditingField: EditingRef option
       Following: ClientId option
       Connected: bool
       DebugLog: DebugEntry list
@@ -132,3 +155,7 @@ type Msg =
     | RenameSelf of string
     | Undo
     | Redo
+    | SelectNote of string option
+    | SetNoteTitle of string * string
+    | EditNoteDescription of string * string
+    | SetEditingField of EditingRef option

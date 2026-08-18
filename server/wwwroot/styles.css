@@ -229,6 +229,73 @@ html, body {
   box-shadow: 0 6px 18px rgba(0,0,0,.25), 0 0 0 3px var(--accent);
 }
 
+/* ---------- note detail panel (title/description, one small "property editor" example) ---------- */
+
+#note-panel {
+  position: absolute;
+  left: 14px;
+  top: 14px;
+  width: 240px;
+  background: var(--panel-bg);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  box-shadow: 0 8px 24px rgba(0,0,0,.14);
+  padding: 12px;
+  display: none;
+  z-index: 3;
+}
+
+.note-panel-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 8px;
+}
+.note-panel-header strong { font-size: 13px; }
+.note-panel-header .ghost-btn { padding: 2px 8px; line-height: 1; }
+
+.note-panel-label {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 11px;
+  color: var(--muted);
+  text-transform: uppercase;
+  letter-spacing: .03em;
+  margin: 8px 0 4px;
+}
+
+.note-panel-field {
+  display: block;
+  width: 100%;
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  padding: 6px 8px;
+  font-family: inherit;
+  font-size: 13px;
+  color: var(--ink);
+  background: #fff;
+}
+.note-panel-field:focus { outline: 2px solid var(--accent); outline-offset: 1px; }
+
+.note-panel-textarea {
+  resize: vertical;
+  min-height: 70px;
+  line-height: 1.35;
+}
+
+.editing-badge {
+  font-size: 10px;
+  font-weight: 600;
+  color: #fff;
+  background: var(--accent);
+  padding: 1px 6px;
+  border-radius: 10px;
+  text-transform: none;
+  letter-spacing: 0;
+  display: none;
+}
+
 /* ---------- debug panel ---------- */
 
 #debug-panel {

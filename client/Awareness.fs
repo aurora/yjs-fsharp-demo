@@ -9,13 +9,24 @@ open Fable.Core.JsInterop
 open Client.Types
 
 type Incoming =
-    | Presence of ClientId * name: string * color: string * cursor: Vec2 option
+    | Presence of ClientId * name: string * color: string * cursor: Vec2 option * editing: EditingRef option
     | Bye of ClientId
 
-let encodePresence (id: ClientId) (name: string) (color: string) (cursor: Vec2 option) : string =
+let encodePresence
+    (id: ClientId)
+    (name: string)
+    (color: string)
+    (cursor: Vec2 option)
+    (editing: EditingRef option)
+    : string =
     let cursorObj: obj =
         match cursor with
         | Some c -> createObj [ "x" ==> c.X; "y" ==> c.Y ]
+        | None -> null
+
+    let editingObj: obj =
+        match editing with
+        | Some(noteId, field) -> createObj [ "noteId" ==> noteId; "field" ==> field ]
         | None -> null
 
     createObj
@@ -23,7 +34,8 @@ let encodePresence (id: ClientId) (name: string) (color: string) (cursor: Vec2 o
           "id" ==> id
           "name" ==> name
           "color" ==> color
-          "cursor" ==> cursorObj ]
+          "cursor" ==> cursorObj
+          "editing" ==> editingObj ]
     |> JS.JSON.stringify
 
 let tryDecode (json: string) : Incoming option =
@@ -44,7 +56,15 @@ let tryDecode (json: string) : Incoming option =
                 else
                     Some { X = cursorRaw?x; Y = cursorRaw?y }
 
-            Some(Presence(id, name, color, cursor))
+            let editingRaw: obj = o?editing
+
+            let editing =
+                if isNull editingRaw then
+                    None
+                else
+                    Some(editingRaw?noteId, editingRaw?field)
+
+            Some(Presence(id, name, color, cursor, editing))
         | "bye" ->
             let id: ClientId = o?id
             Some(Bye id)

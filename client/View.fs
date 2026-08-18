@@ -73,6 +73,12 @@ let private mountShell (dispatch: Msg -> unit) : (Model -> unit) =
     let connText: obj = connStatus?querySelector (".conn-text")
     let undoBtn = byId "undo-btn"
     let redoBtn = byId "redo-btn"
+    let notePanel = byId "note-panel"
+    let notePanelClose = byId "note-panel-close"
+    let noteTitleInput = byId "note-title-input"
+    let noteDescTextarea = byId "note-desc-textarea"
+    let titleBadge = byId "note-title-badge"
+    let descBadge = byId "note-desc-badge"
 
     // -- one-time sizing / resize wiring -----------------------------------------
 
@@ -198,6 +204,65 @@ let private mountShell (dispatch: Msg -> unit) : (Model -> unit) =
                         e?preventDefault ()
                         dispatch Redo
     )
+
+    // -- note detail panel (title + description) ----------------------------------
+    //
+    // A small, deliberately minimal example of the "multiple UI surfaces, one document"
+    // pattern from docs/02-architektur-muster.md #6: Title is a plain LWW string field (no
+    // Y.Text needed - short, low collision risk), Description is real Y.Text co-editing, same
+    // diff-and-patch machinery as the sticky note's own body. Neither field shows other users'
+    // in-text caret position - see docs/03-fallstricke.md #6 for why that would need a real
+    // editor engine (ProseMirror/CodeMirror-class) instead of a plain <input>/<textarea>; what
+    // we *can* show cheaply is an "X is typing here" badge via the awareness channel, which is
+    // exactly what the note-title-badge/note-desc-badge elements below are for.
+
+    let mutable currentPanelNoteId: string option = None
+    let mutable pendingSelfTitle: string option = None
+    let mutable pendingSelfDescription: string option = None
+
+    notePanelClose?addEventListener ("click", fun (_: obj) -> dispatch (SelectNote None))
+
+    noteTitleInput?addEventListener (
+        "input",
+        fun (_: obj) ->
+            match currentPanelNoteId with
+            | Some id ->
+                let value: string = noteTitleInput?value
+                pendingSelfTitle <- Some value
+                dispatch (SetNoteTitle(id, value))
+            | None -> ()
+    )
+
+    noteTitleInput?addEventListener (
+        "focus",
+        fun (_: obj) ->
+            match currentPanelNoteId with
+            | Some id -> dispatch (SetEditingField(Some(id, "title")))
+            | None -> ()
+    )
+
+    noteTitleInput?addEventListener ("blur", fun (_: obj) -> dispatch (SetEditingField None))
+
+    noteDescTextarea?addEventListener (
+        "input",
+        fun (_: obj) ->
+            match currentPanelNoteId with
+            | Some id ->
+                let value: string = noteDescTextarea?value
+                pendingSelfDescription <- Some value
+                dispatch (EditNoteDescription(id, value))
+            | None -> ()
+    )
+
+    noteDescTextarea?addEventListener (
+        "focus",
+        fun (_: obj) ->
+            match currentPanelNoteId with
+            | Some id -> dispatch (SetEditingField(Some(id, "description")))
+            | None -> ()
+    )
+
+    noteDescTextarea?addEventListener ("blur", fun (_: obj) -> dispatch (SetEditingField None))
 
     // -- per-render helpers ---------------------------------------------------------
 
@@ -341,6 +406,59 @@ let private mountShell (dispatch: Msg -> unit) : (Model -> unit) =
                         // change - merge it in while preserving the caret as best we can.
                         patchTextareaIfChanged editOverlay note.Text
 
+    /// Who (if anyone) currently has `field` of `noteId` focused, per the awareness channel.
+    let editorNameFor (model: Model) (noteId: string) (field: string) : string option =
+        model.Presence
+        |> Map.toList
+        |> List.tryPick (fun (_, info) ->
+            match info.Editing with
+            | Some(nid, f) when nid = noteId && f = field -> Some info.Name
+            | _ -> None)
+
+    let setBadge (badgeEl: obj) (nameOpt: string option) =
+        match nameOpt with
+        | Some name ->
+            badgeEl?style?display <- "inline-block"
+            badgeEl?textContent <- $"{name} tippt…"
+        | None -> badgeEl?style?display <- "none"
+
+    let syncNotePanel (model: Model) =
+        match model.SelectedNoteId with
+        | None ->
+            notePanel?style?display <- "none"
+            currentPanelNoteId <- None
+            pendingSelfTitle <- None
+            pendingSelfDescription <- None
+        | Some id ->
+            match Map.tryFind id model.Notes with
+            | None ->
+                notePanel?style?display <- "none"
+                currentPanelNoteId <- None
+            | Some note ->
+                notePanel?style?display <- "block"
+
+                if currentPanelNoteId <> Some id then
+                    currentPanelNoteId <- Some id
+                    pendingSelfTitle <- None
+                    pendingSelfDescription <- None
+                    noteTitleInput?value <- note.Title
+                    noteDescTextarea?value <- note.Description
+                else
+                    // Same self-edit-in-flight protection as the main body overlay above -
+                    // see docs/03-fallstricke.md #1 for why this matters.
+                    (match pendingSelfTitle with
+                     | Some pending when pending <> note.Title -> ()
+                     | Some _ -> pendingSelfTitle <- None
+                     | None -> patchTextareaIfChanged noteTitleInput note.Title)
+
+                    (match pendingSelfDescription with
+                     | Some pending when pending <> note.Description -> ()
+                     | Some _ -> pendingSelfDescription <- None
+                     | None -> patchTextareaIfChanged noteDescTextarea note.Description)
+
+                setBadge titleBadge (editorNameFor model id "title")
+                setBadge descBadge (editorNameFor model id "description")
+
     // -- canvas painting, coalesced to the display's refresh rate -----------------
     //
     // Model updates can arrive far faster than the screen can show them (every
@@ -415,6 +533,7 @@ let private mountShell (dispatch: Msg -> unit) : (Model -> unit) =
         renderPresence model
         renderDebug model
         syncEditOverlay model
+        syncNotePanel model
         requestPaint model
 
     renderModel

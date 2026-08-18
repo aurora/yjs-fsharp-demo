@@ -45,6 +45,23 @@
       <canvas id="board"></canvas>
       <textarea id="edit-overlay" spellcheck="false"></textarea>
       <div id="hint">Doppelklick auf eine Note zum Bearbeiten · Mausrad = Zoom · Ziehen auf leerer Fläche = Pan</div>
+
+      <aside id="note-panel">
+        <div class="note-panel-header">
+          <strong>Notiz-Details</strong>
+          <button id="note-panel-close" class="ghost-btn" title="Schließen">×</button>
+        </div>
+        <label class="note-panel-label" for="note-title-input">
+          Titel
+          <span id="note-title-badge" class="editing-badge"></span>
+        </label>
+        <input id="note-title-input" class="note-panel-field" maxlength="60" />
+        <label class="note-panel-label" for="note-desc-textarea">
+          Beschreibung
+          <span id="note-desc-badge" class="editing-badge"></span>
+        </label>
+        <textarea id="note-desc-textarea" class="note-panel-field note-panel-textarea" spellcheck="false"></textarea>
+      </aside>
     </main>
 
     <aside id="debug-panel">

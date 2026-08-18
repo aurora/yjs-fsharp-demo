@@ -69,13 +69,29 @@ let snapshot () : NoteSnapshot list * string list =
             let noteMap = mapGetObj id notesMap :?> YMap
             let text = mapGetObj "text" noteMap :?> YText
 
+            // Defensive: title/description were added to the note "shape" after this prototype
+            // already had notes in some running sessions - fall back to empty rather than crash.
+            let title =
+                if mapHas "title" noteMap then
+                    mapGetString "title" noteMap
+                else
+                    ""
+
+            let description =
+                if mapHas "description" noteMap then
+                    mapGetObj "description" noteMap :?> YText |> textToString
+                else
+                    ""
+
             { Id = id
               X = mapGetFloat "x" noteMap
               Y = mapGetFloat "y" noteMap
               W = mapGetFloat "w" noteMap
               H = mapGetFloat "h" noteMap
               Color = mapGetString "color" noteMap |> NoteColor.ofStorage
-              Text = textToString text })
+              Text = textToString text
+              Title = title
+              Description = description })
 
     notes, order
 
@@ -98,6 +114,8 @@ let addNote (color: NoteColor) (x: float) (y: float) : string =
         mapSet "h" (box 150.0) noteMap
         mapSet "color" (box (NoteColor.toStorage color)) noteMap
         mapSet "text" (box (newText "")) noteMap
+        mapSet "title" (box "") noteMap
+        mapSet "description" (box (newText "")) noteMap
         mapSet id (box noteMap) notesMap
         arrayPush (box id) noteOrder)
 
@@ -119,15 +137,27 @@ let deleteNote (id: string) : unit =
 
     log Out "note-delete" (id.Substring(0, 6))
 
-/// Turns a textarea's `input` event into a minimal Y.Text edit instead of a
-/// full clear-and-rewrite, by diffing off the common prefix/suffix of old vs new
-/// text. This is what lets two people type in different parts of the same note
-/// at the same time without stomping on each other - Y.Text's CRDT merges the two
-/// small, disjoint edits cleanly instead of one full-text write clobbering the other.
-let editNoteText (id: string) (oldText: string) (newText': string) : unit =
+/// A short, low-collision-risk field (a title) doesn't need Y.Text - a plain string value on
+/// the Y.Map is fine, with ordinary causally-correct last-writer-wins semantics per field. See
+/// docs/02-architektur-muster.md #6: not everything needs character-level merge.
+let setNoteTitle (id: string) (title: string) : unit =
     match tryGetNoteMap id with
     | Some noteMap ->
-        let textNode = mapGetObj "text" noteMap :?> YText
+        transact doc (fun () -> mapSet "title" (box title) noteMap)
+        log Out "note-title" $"{id.Substring(0, 6)} -> \"{title}\""
+    | None -> ()
+
+/// Turns a textarea's `input` event into a minimal Y.Text edit instead of a
+/// full clear-and-rewrite, by diffing off the common prefix/suffix of old vs new
+/// text. This is what lets two people type in different parts of the same field
+/// at the same time without stomping on each other - Y.Text's CRDT merges the two
+/// small, disjoint edits cleanly instead of one full-text write clobbering the other.
+/// `fieldKey` picks which Y.Text on the note this applies to - the sticky's own body
+/// ("text") and its longer-form "description" both go through this same helper.
+let private editNoteTextField (fieldKey: string) (id: string) (oldText: string) (newText': string) : unit =
+    match tryGetNoteMap id with
+    | Some noteMap ->
+        let textNode = mapGetObj fieldKey noteMap :?> YText
         let oldLen = oldText.Length
         let newLen = newText'.Length
         let maxCommon = min oldLen newLen
@@ -153,8 +183,14 @@ let editNoteText (id: string) (oldText: string) (newText': string) : unit =
             if insertedText.Length > 0 then
                 textInsert prefix insertedText textNode)
 
-        log Out "note-edit" $"{id.Substring(0, 6)} -{removedLen}/+{insertedText.Length} chars @ {prefix}"
+        log Out $"note-{fieldKey}" $"{id.Substring(0, 6)} -{removedLen}/+{insertedText.Length} chars @ {prefix}"
     | None -> ()
+
+let editNoteText (id: string) (oldText: string) (newText': string) : unit =
+    editNoteTextField "text" id oldText newText'
+
+let editNoteDescription (id: string) (oldText: string) (newText': string) : unit =
+    editNoteTextField "description" id oldText newText'
 
 // -- undo/redo --------------------------------------------------------------------
 
