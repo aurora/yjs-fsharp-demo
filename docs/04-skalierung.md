@@ -71,6 +71,13 @@ denselben Zweck nutzt. Für die meisten Anwendungsfälle (auch mit hunderten gle
 Nutzern) ist ein einzelner Prozess aber lange ausreichend — das ist ein Punkt, den man kennen
 sollte, aber selten sofort braucht.
 
+**Nicht verwechseln** mit der Frage, wie man Räume überhaupt erst anlegt/findet: dass ein
+Server viele *isolierte* Räume gleichzeitig bedienen kann, ist reine Datenstruktur (nach
+Raum-ID aufgeschlüsselter Zustand, siehe [Prototyp-README](../README.md#known-simplifications-intentionally-out-of-scope-for-a-prototype))
+und funktioniert unabhängig davon, ob überhaupt schon einer existiert. Ein **Verzeichnis**
+("welche Räume/Boards gibt es, wer darf rein") ist eine komplett separate, eigene Funktion —
+braucht eigene Persistenz und Zugriffskontrolle, unabhängig vom eigentlichen Dokument-Log.
+
 ## Server wird Yjs-fähig: YDotNet / Ycs
 
 > Betrifft nur den **Server**. Für die Frage, ob diese beiden auch dem Client hin zu mehr

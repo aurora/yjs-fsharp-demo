@@ -197,8 +197,26 @@ watch mode wired up, this is a prototype.
 - **No persistence across server restarts.** The update log is in-memory only
   (this was a deliberate choice for this prototype - see the conversation that
   produced it). Swapping in a file- or DB-backed log would only touch `Rooms.fs`.
-- **One hardcoded room** (`?room=default`). The server already supports
-  multiple rooms; the client just never asks for a different one.
+- **One hardcoded room** (`?room=default`). Worth being precise about what
+  that does and doesn't mean:
+  - **Room *isolation* already fully works.** [`Rooms.fs`](server/Rooms.fs)
+    keys everything (connections, update log, presence) by an arbitrary room
+    ID string in a `ConcurrentDictionary` - a room's state has zero coupling
+    to any other room's, or to *which* users happen to be in it. This is
+    structural, not something that had to be built - independent, Miro-style
+    boards fall out of the data structure for free.
+  - **What's still missing for a real multi-board product**: (1) the client
+    would need to read the room ID from the URL instead of hardcoding
+    `"default"` - small; (2) a **board directory** ("list all my boards") -
+    doesn't exist at all, a room is silently created on first connection and
+    there's no API to enumerate existing ones, which also needs its own
+    persistence (independent of the in-memory update log above); (3)
+    **per-board access control** - anyone who knows/guesses a room ID can
+    join it right now, ties into the "no auth" point below.
+  - This is a different concern from [Skalierung #3](docs/04-skalierung.md#3-ein-prozess-viele-räume--und-irgendwann-viele-prozesse)
+    (distributing *many* rooms across *multiple server processes*) - that's
+    about scaling rooms you can already create and find, not about creating
+    or finding them in the first place.
 - **No auth.** Anyone who can reach the server can join and rename themselves.
 - **Text merge quality**: the textarea↔Y.Text bridge uses a common
   prefix/suffix diff (see `Doc.editNoteText` / `View.patchTextareaIfChanged`),
