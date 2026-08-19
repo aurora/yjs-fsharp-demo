@@ -34,6 +34,10 @@ lauffähigen Prototyp im Repo-Wurzelverzeichnis ([../README.md](../README.md)) a
    Automerge, OT-basierte Systeme, aktorbasierte Eigenbauten — Vergleich und Einordnung,
    wann welcher Ansatz Sinn ergibt.
 
+6. **[Schnellstart: Loslegen im eigenen Projekt](06-schnellstart-prompt.md)**
+   Kein Lesestoff, sondern zum Verwenden: kompakte Entscheidungs-Checkliste plus ein fertiger,
+   copy-paste-barer Prompt für eine KI-Coding-Session im eigenen (beliebigen) Tech-Stack.
+
 ## Für Eilige
 
 - **CRDT in einem Satz**: Datenstrukturen, die so gebaut sind, dass zwei unabhängig
