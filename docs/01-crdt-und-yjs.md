@@ -174,6 +174,36 @@ Kurz: **sehr.** Das ist keine Nischen- oder Frickelbibliothek:
 Das heißt nicht, dass Yjs alternativlos ist — siehe [Alternativen](05-alternativen.md) — aber
 die Aussage "das ist unausgereift" lässt sich anhand dieser Faktenlage nicht halten.
 
+## Trägt das langfristig? Wartung, Lock-in, Kosten
+
+Drei Fragen, die ein vorsichtiger Entscheider zurecht stellt, bevor eine Abhängigkeit
+langfristig eingeht wird — losgelöst davon, wie gut der eigene Prototyp ist:
+
+**"Ein-Personen-Projekt — was, wenn der Maintainer abspringt?"** Berechtigt: Yjs wird primär
+von einer Person entwickelt, [Kevin Jahns](https://github.com/dmonad). Das relativiert sich
+aber bei genauerem Hinsehen: MIT-Lizenz (forkbar, keine rechtliche Abhängigkeit von einer
+Person), eine transparente Förderorganisation drumherum
+([Y-Collective](https://opencollective.com/y-collective), finanziert mehrere aktive
+Contributor über die reine Kernbibliothek hinaus), und kommerzielle Unternehmen mit echtem
+Eigeninteresse am Fortbestand (Tiptap/Hocuspocus baut sein gesamtes Geschäftsmodell darauf
+auf). Aktuell fördern laut eigenen Angaben sogar **ZenDiS** (deutsches Zentrum für Digitale
+Souveränität, hinter openDesk) und **DINUM** (französische Digitalbehörde, hinter La Suite
+Docs) Yjs-Weiterentwicklung — kein Hobby-Projekt mehr, sondern mit digitaler Souveränität auf
+Behördenebene verknüpft.
+
+**"Kommen wir da später wieder raus, oder ist das Lock-in?"** Die Antwort steckt im
+Architektur-Muster selbst, siehe [Architektur-Muster #9](02-architektur-muster.md#9-ein-reiches-domänenmodell-behalten-yjs-als-dünne-projektionsschicht):
+weil die Yjs-Berührungsfläche bewusst auf eine dünne Interop-Schicht plus eine schmale
+Projektion des Domänenmodells begrenzt bleibt, statt Yjs-Typen im ganzen Code zu verstreuen,
+wäre ein späterer Wechsel deutlich kontrollierter als bei tief verwobenen Abhängigkeiten. Kein
+Zero-Cost-Exit, aber auch kein Full-Rewrite.
+
+**"Versteckte Kosten/Lizenzfallen?"** Yjs selbst: MIT-Lizenz, komplett kostenlos, keine
+Stufen oder Limits. Was kommerziell existiert (Tiptap Cloud, Liveblocks, y-sweet) sind
+**optionale** gehostete Infrastruktur-Angebote für alle, die nicht selbst hosten wollen — nie
+eine Pflicht. Dieser Prototyp beweist das indirekt schon selbst: komplett selbst gehostet,
+nichts davon bezahlt oder auch nur benötigt.
+
 ## Neutrale Einordnung: Yjs vs. eigenentwickelte (z.B. aktorbasierte) Lösung
 
 Ein Actor-Framework wie Akka (oder Akka.NET, Orleans, …) ist ein exzellentes Werkzeug für

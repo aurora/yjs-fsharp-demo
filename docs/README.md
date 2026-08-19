@@ -12,14 +12,15 @@ lauffähigen Prototyp im Repo-Wurzelverzeichnis ([../README.md](../README.md)) a
 1. **[CRDT & Yjs — Grundlagen](01-crdt-und-yjs.md)**
    Was ist ein CRDT, wie löst Yjs das Merge-Problem, läuft das zwingend über einen Server
    (Provider-Konzept: `y-websocket` vs. `y-webrtc` vs. `y-indexeddb`), wie reif/verbreitet ist
-   die Bibliothek wirklich, und eine neutrale Einordnung gegenüber eigenentwickelten (z.B.
-   aktorbasierten) Lösungen.
+   die Bibliothek wirklich, Wartung/Lock-in/Kosten langfristig betrachtet, und eine neutrale
+   Einordnung gegenüber eigenentwickelten (z.B. aktorbasierten) Lösungen.
 
 2. **[Architektur-Muster](02-architektur-muster.md)**
    Die übertragbaren Bausteine: Zwei-Kanal-Prinzip (Dokument vs. Awareness), der Server als
    "dummer Relay", Dokumentstruktur, Integration in ein UI-Framework, Weltkoordinaten für
    geteilte Cursor, mehrere UI-Oberflächen auf einem Dokument, Nutzeridentität vs.
-   Yjs-Client-ID, Ansichten auf geteilte Elemente (Kopien ohne echte Kopien).
+   Yjs-Client-ID, Ansichten auf geteilte Elemente (Kopien ohne echte Kopien), ein bestehendes
+   reiches Domänenmodell behalten (Yjs als dünne Projektionsschicht statt Ersatz).
 
 3. **[Fallstricke & Lessons Learned](03-fallstricke.md)**
    Was beim Einbau typischerweise schiefgeht (inkl. echter Bugs aus diesem Projekt), wo die

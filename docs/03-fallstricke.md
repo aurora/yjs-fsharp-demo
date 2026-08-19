@@ -251,3 +251,11 @@ verkleinern; eine KI-gestützte Neuimplementierung des Algorithmus selbst dagege
   ("Fuzz-/Property-based Testing"). Das ist im Kern dieselbe Technik, mit der Yjs selbst und
   CRDT-Forschung allgemein Korrektheit prüfen — für dieses Projekt bewusst nicht aufgesetzt
   (Prototyp-Scope), für einen produktiven Einsatz aber der naheliegende nächste Schritt.
+- **Und wenn's in Produktion trotzdem mal komisch aussieht?** Eine andere Frage als Testen vor
+  dem Release: wie würde man einen echten, seltenen Vorfall ("bei Nutzer X sieht das Board
+  falsch aus") überhaupt nachvollziehen? Der Update-Log gibt zumindest die Möglichkeit, die
+  tatsächliche Operationsfolge zu reproduzieren, die zu dem Zustand geführt hat — aber ein
+  fertiges Debugging-Werkzeug dafür existiert nicht von selbst, das wäre bei einem
+  Produktivsystem eine bewusst zu treffende Entscheidung (z.B. den Log für eine gewisse Zeit
+  aufzubewahren, gerade weil er sonst nur für die Kompaktierung interessant ist, siehe
+  [Skalierung](04-skalierung.md)), keine, die man stillschweigend voraussetzen sollte.

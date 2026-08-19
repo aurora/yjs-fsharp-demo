@@ -27,6 +27,9 @@ dein eigentliches Projekt einfügen kannst.
   einbetten. → [Architektur-Muster #6](02-architektur-muster.md#6-mehrere-ui-oberflächen-ein-dokument)
 - "Ansichten" auf dieselben Objekte nötig (Unterdiagramme, die Änderungen teilen)? →
   [Architektur-Muster #8](02-architektur-muster.md#8-ansichten-auf-geteilte-elemente-kopien-ohne-echte-kopien)
+- Gibt es schon ein ausgereiftes Domänenmodell? Das bleibt unangetastet - Yjs bekommt nur eine
+  schmale Projektionsschicht für die tatsächlich live-mehrbenutzerfähigen Felder, kein
+  zweites, eigenständiges Modell. → [Architektur-Muster #9](02-architektur-muster.md#9-ein-reiches-domänenmodell-behalten-yjs-als-dünne-projektionsschicht)
 
 **Transport & Server**
 - Client-Server oder Peer-to-Peer? → [CRDT & Yjs — Transport](01-crdt-und-yjs.md#transport-das-provider-konzept--läuft-das-zwingend-über-einen-server)
@@ -119,6 +122,10 @@ DATENMODELL
 - Gibt es "Ansichten" auf dieselben Objekte (z.B. Unterdiagramme, die Änderungen mit dem
   Original teilen)? Dann als zweite Referenzliste auf dieselben Objekte modellieren, keine
   echten Kopien - ggf. mit Aufteilung in geteilte vs. ansichtsspezifische Eigenschaften.
+- Existiert schon ein ausgereiftes Domänenmodell (Typhierarchie, Validierung, Invarianten)?
+  Das bleibt unangetastet - Yjs bekommt nur eine schmale Übersetzungsschicht (hydrieren aus
+  Yjs-Feldern, nur geänderte Felder zurückschreiben) für die tatsächlich live-mehrbenutzerfähigen
+  Felder, kein zweites, eigenständig entworfenes Modell.
 
 KONFLIKTE, UNDO, SPERREN
 - Kein Locking für gemeinsam editierte Felder einbauen - echtes CRDT-Co-Editing braucht dafür
@@ -174,6 +181,10 @@ DATENMODELL
 - Gibt es "Ansichten" auf dieselben Objekte (z.B. Unterdiagramme, die Änderungen mit dem
   Original teilen)? Dann als zweite Referenzliste auf dieselben Objekte modellieren, keine
   echten Kopien - ggf. mit Aufteilung in geteilte vs. ansichtsspezifische Eigenschaften.
+- Existiert schon ein ausgereiftes Domänenmodell (Typhierarchie, Validierung, Invarianten)?
+  Das bleibt unangetastet - Yjs bekommt nur eine schmale Übersetzungsschicht (hydrieren aus
+  Yjs-Feldern, nur geänderte Felder zurückschreiben) für die tatsächlich live-mehrbenutzerfähigen
+  Felder, kein zweites, eigenständig entworfenes Modell.
 
 TRANSPORT & SERVER
 - Client-Server (WebSocket-Relay) oder Peer-to-Peer (WebRTC)? Im Zweifel: Client-Server, wegen

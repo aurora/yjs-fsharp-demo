@@ -38,6 +38,15 @@ binären Awareness-Protokoll — für ein Demo-System gut nachvollziehbar, für 
 eher das offizielle `y-protocols/awareness` in Betracht ziehen (siehe
 [Fallstricke](03-fallstricke.md)).
 
+**Datenschutz-Hinweis, unabhängig vom Prototyp**: der Awareness-Kanal überträgt so gut wie
+immer personenbezogene Daten (Name, Cursor-Position, "wer bearbeitet gerade was") ungefiltert
+an alle anderen im selben Raum — und zwar *by design*, das ist der ganze Sinn des Kanals. Anders
+als beim Dokument-Kanal gibt es hier typischerweise keinen "nur beobachten, selbst unsichtbar
+bleiben"-Modus. Das ist kein Yjs-spezifisches Problem, sondern gilt für jede Präsenzanzeige
+(auch Miro, Figma, Google Docs machen das genauso) — aber es ist trotzdem eine bewusste
+Design-Entscheidung, keine, die man stillschweigend voraussetzen sollte, gerade bei einem
+Produktivsystem mit echten Nutzerdaten.
+
 ## 2. Der Server als "dummer" Relay + Log
 
 Das ist der Kernvorteil aus [Kapitel 1](01-crdt-und-yjs.md#wie-löst-yjs-das-konkret): weil Yjs-
@@ -253,3 +262,52 @@ viewOverrides:
 Damit lässt sich präzise ausdrücken, was "dasselbe Ding an zwei Stellen" bedeutet, ohne echte
 Duplikate zu erzeugen oder eine eigene Kopier-/Sync-Logik dafür zu bauen — man modelliert nur,
 was geteilt ist und was nicht, der Rest ergibt sich aus der Struktur selbst.
+
+## 9. Ein reiches Domänenmodell behalten: Yjs als dünne Projektionsschicht
+
+Eine naheliegende Sorge, wenn schon ein ausgereiftes, bis ins Detail durchdachtes
+Domänenmodell existiert (Typhierarchie, Validierung, Invarianten, berechnete Eigenschaften):
+zwingt Yjs dazu, das nochmal separat als "Yjs-Modell" nachzubauen — am Ende zwei unabhängig
+gepflegte Datenmodelle, die man synchron halten muss?
+
+**Nein — das bestehende Domänenmodell bleibt unverändert.** Was dazukommt, ist eine schmale
+Übersetzungsschicht mit zwei Richtungen, nicht ein zweites, eigenständig entworfenes Modell:
+
+- **Hydrieren**: aus den Yjs-Feldern ein reiches Domänenobjekt aufbauen (`Y.Map`-Daten →
+  z.B. eine `DomainEvent`-Instanz, inklusive Validierung und berechneter Eigenschaften).
+- **Anwenden**: ändert der Nutzer etwas, wird **nur das betroffene Feld** in die
+  Yjs-Struktur geschrieben, nie das ganze Objekt serialisiert und überschrieben (dasselbe
+  Feld-Splitting-Prinzip wie in [Punkt 3](#3-dokumentstruktur-felder-von-freitext-trennen)).
+
+Das ist strukturell dasselbe Muster, das die meisten nicht-trivialen Anwendungen ohnehin schon
+kennen: die Trennung zwischen Persistenz-/DTO-Modell und Domänenmodell (z.B. Datenbank-Entities
+vs. Domain-Aggregates in einer geschichteten Architektur). Yjs übernimmt hier einfach die
+Rolle, die sonst die Datenbank oder ein DTO übernehmen würde — eine schlanke, kollaborative
+Zustandsschicht, kein Ersatz für das eigentliche Modell.
+
+Beispielhaft für ein Event-Modelling-Diagramm:
+
+```
+Domänenschicht (bleibt exakt wie sie ist, unangetastet)
+  DomainEvent, Command, Aggregate, Actor
+  - Validierung, Invarianten, Typhierarchie, berechnete Eigenschaften
+
+Kollaborative Schicht (neu, aber schmal)
+  elements: Y.Map<id, Y.Map>
+    { type: "event"|"command"|...   -- einfacher Wert, LWW
+      name: Y.Text oder Wert         -- nur Y.Text, wenn wirklich gleichzeitig dran getippt wird
+      position: {x,y}                -- LWW
+      ... nur die Felder, die live mehrbenutzerfähig sein müssen }
+  relationships / views: siehe Punkt 6 und 8
+```
+
+**Der Hebel, der diese Schicht klein hält**: nicht das ganze Domänenmodell braucht überhaupt
+eine Yjs-Repräsentation — nur Felder, die (a) tatsächlich über die UI live editierbar sind
+*und* (b) von Mehrbenutzer-Merge profitieren. Validierungslogik, berechnete Werte und
+Geschäftsregeln gehören grundsätzlich nicht hinein; die laufen weiterhin ganz normal auf dem
+bereits hydrierten Domänenobjekt, wie bisher auch. Das ist dieselbe Regel wie
+"Nutzerabsicht wird synchronisiert, Berechnungen werden abgeleitet" aus
+[Punkt 6](#6-mehrere-ui-oberflächen-ein-dokument)/[Punkt 8](#8-ansichten-auf-geteilte-elemente-kopien-ohne-echte-kopien),
+nur von der anderen Seite betrachtet: sie schrumpft die kollaborative Schicht auf genau den
+Teil, der tatsächlich geteilt werden muss — typischerweise ein kleiner Bruchteil eines
+ausgereiften Domänenmodells, nicht dessen Ersatz.
