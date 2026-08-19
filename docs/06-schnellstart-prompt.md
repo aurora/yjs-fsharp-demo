@@ -53,6 +53,11 @@ dein eigentliches Projekt einfügen kannst.
 - Rendering an `requestAnimationFrame` koppeln statt sofort bei jedem Update zu malen.
 - Der Update-Log wächst mit der Zeit, nicht mit der Elementzahl — relevant bei langen Sessions.
   → [Skalierung](04-skalierung.md)
+- **Der Referenz-Server ist bewusst minimal** — In-Memory, kein Reconnect/Backoff, keine
+  Persistenz über Neustarts, keine Auth, keine Kompaktierung. Das ist das *Muster* (dummer
+  Relay + Replay-Log), nicht ein fertiges Produktivsystem — ob das fürs Zielprojekt schon
+  reicht oder wo zusätzliche Arbeit reinfließen muss, ist eine eigene Entscheidung. →
+  [Skalierung](04-skalierung.md), [README "Known simplifications"](../README.md#known-simplifications-intentionally-out-of-scope-for-a-prototype)
 
 ## Der Prompt
 
@@ -97,6 +102,11 @@ TECHNISCHE INTEGRATION (aus dem Referenz-Prototyp übernehmen, nicht neu erfinde
 - Server als reiner F#/ASP.NET-Core-Prozess mit rohen WebSockets (System.Net.WebSockets), kein
   SignalR nötig - der Server speichert/leitet nur Byte-Arrays weiter, versteht Yjs nicht.
   Siehe server/Rooms.fs.
+- WICHTIG, nicht einfach mit übernehmen: der Referenz-Server ist bewusst minimal - In-Memory,
+  kein Reconnect/Backoff, keine Persistenz über Neustarts, keine Auth, keine Kompaktierung des
+  Update-Logs. Das ist das Relay-*Muster*, kein fertiges Produktivsystem. Frag mich explizit,
+  ob unser Zielprojekt das so übernehmen kann oder ob hier (Persistenz, Reconnect, Auth,
+  Kompaktierung bei langen Sessions) noch eigene Arbeit reinfließen muss.
 - Origin-Tagging nicht vergessen (eigene vs. fremde Änderungen unterscheiden, sonst
   Echo-Schleife), siehe remoteOrigin in client/Interop/Yjs.fs.
 
@@ -140,9 +150,11 @@ ROBUSTHEIT & SKALIERUNG
   nachdenken.
 
 Frag mich die fachlichen Punkte (Datenmodell, welche Felder Y.Text vs. Y.Map-Wert, Beziehungen/
-Ansichten) zuerst durch, bevor du anfängst, Code zu schreiben - die technische Integration oben
+Ansichten) zuerst durch, bevor du anfängst, Code zu schreiben. Die technische Integration oben
 ist bereits geklärt und soll so weit wie möglich 1:1 aus dem Referenz-Prototyp übernommen
-werden, nicht neu entworfen werden.
+werden, nicht neu entworfen werden - **mit einer Ausnahme**: ob der minimale Server (Persistenz,
+Reconnect, Auth, Kompaktierung) für uns so reicht oder erweitert werden muss, ist eine eigene,
+noch offene Entscheidung, die wir zusammen treffen müssen, nicht automatisch übernehmen.
 ```
 
 ### Variante B: anderer Tech-Stack

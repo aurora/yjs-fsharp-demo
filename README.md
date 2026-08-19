@@ -28,6 +28,9 @@ non-.NET artifact in the repo is one vendored, dependency-free copy of `yjs.mjs`
   byte[] it has ever seen and replays them to new joiners - see
   [`server/Rooms.fs`](server/Rooms.fs). That's the whole "CRDT server". No
   merge logic, no conflict resolution code, nothing Yjs-specific at all.
+  (That's the *relay pattern*, not a production server, though - it's
+  deliberately minimal: no persistence, reconnect, or auth. See
+  "Known simplifications" below before reusing this as-is in a real project.)
 - **Real concurrent text editing is *less* code than a lock would have been.**
   A pessimistic "note is locked while X edits it" scheme needs lock acquire/
   release/timeout/disconnect-cleanup logic. Real co-editing via `Y.Text` needs
@@ -202,3 +205,7 @@ watch mode wired up, this is a prototype.
   which handles typing, backspacing and pasting well but isn't a full
   operational-transform-grade caret tracker like `y-codemirror` would give you
   for a production editor.
+
+Planning to build on this pattern in a real project? See
+[docs/06-schnellstart-prompt.md](docs/06-schnellstart-prompt.md) - it turns this list into an
+explicit "ask before assuming" checklist item instead of something to silently carry over.
