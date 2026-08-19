@@ -66,6 +66,33 @@ non-.NET artifact in the repo is one vendored, dependency-free copy of `yjs.mjs`
   nature, and keeping it as plain JSON (instead of squeezing it through Yjs too)
   makes it easy to eyeball in the debug panel.
 
+## What's actually Yjs, and what isn't?
+
+A quick reference for "wait, is *that* handled by Yjs, or did you build it?" - e.g. is
+"follow other user" done entirely through Yjs, or only part of it?
+
+| Feature | Yjs' job | Hand-built |
+|---|---|---|
+| Note position / size / color | `Y.Map` fields (per-field last-writer-wins) | - |
+| Note body & description text | `Y.Text` - the actual CRDT merge | textarea↔`Y.Text` diff bridge + caret preservation |
+| Title (short field) | plain value in a `Y.Map` (LWW) | - |
+| Undo/Redo | `Y.UndoManager`, in full | buttons, keyboard shortcuts |
+| Cross-client sync & convergence | Yjs' CRDT engine, entirely | - |
+| Server (relay + replay log) | *nothing* - the server never touches Yjs | [`Rooms.fs`](server/Rooms.fs), from scratch |
+| Presence bar (who's online) | *nothing* | own JSON protocol ([`Awareness.fs`](client/Awareness.fs)) |
+| Cursor positions | *nothing* | same JSON channel |
+| **"Follow" mode** | *nothing* | cursor data rides the JSON channel; the camera-centering math is plain F# in [`Camera.fs`](client/Camera.fs) - **0% Yjs** |
+| Zoom/pan | *nothing* - not even synced between users | purely local per person |
+| Debug panel & console logging | *nothing* | pure observability code |
+
+Roughly half the things people notice first in a demo like this (who's online, cursors,
+follow, zoom) have nothing to do with Yjs at all - which is itself worth knowing: Yjs solves
+exactly one hard problem (merging concurrent edits to shared *content*) and stays out of
+everything else. That narrowness is a feature, not a gap - see
+[docs/02-architektur-muster.md](docs/02-architektur-muster.md) for why splitting it this way
+(a CRDT channel for content, a plain-JSON channel for ephemeral presence) is the pattern to
+copy, not a shortcut specific to this prototype.
+
 ## Project layout
 
 ```
