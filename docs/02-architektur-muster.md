@@ -183,3 +183,73 @@ Der entscheidende Punkt dahinter: nichts davon ändert etwas am Server. Er bleib
 "dumm" wie in [Punkt 2](#2-der-server-als-dummer-relay--log) beschrieben, egal wie viele
 Dokument-Wurzeln oder UI-Oberflächen der Client anlegt. Die Komplexität einer wachsenden UI ist
 vollständig eine Client-seitige Datenmodellierungsfrage.
+
+## 7. Nutzeridentität ist eine dritte Schicht, keine Yjs-Client-ID
+
+Yjs weist jedem `Y.Doc` beim Erstellen eine zufällige **Client-ID** zu und markiert damit jede
+Änderung mit ihrem Urheber — das ist z.B. die Grundlage dafür, dass `Y.UndoManager` nur die
+eigenen Änderungen rückgängig macht (siehe [Fallstricke](03-fallstricke.md#was-man-sonst-vorher-wissen-sollte)).
+Wichtig dabei: eine Client-ID ist **keine stabile Nutzeridentität**. Sie gehört zu einer
+Dokument-*Instanz*, nicht zu einer Person — ein neuer Tab, ein Seiten-Reload, eine neue Session
+erzeugt in der Regel eine neue Client-ID, auch wenn es dieselbe Person ist. Yjs weiß "diese
+Änderung kam von Client 471823", nicht "... von Harald".
+
+Die Verknüpfung von Client-ID zu echter Nutzeridentität (Name, Avatar, Auth-Konto) muss die
+eigene Anwendung selbst herstellen — typischerweise über den Awareness-Kanal, der ja ohnehin
+schon Namen/Farben überträgt (siehe [Punkt 1](#1-zwei-kanal-prinzip-dokument-vs-awareness)).
+Dieser Prototyp nimmt hier bewusst eine Abkürzung: er verwendet `doc.clientID` direkt als
+App-weite Session-Identität (siehe [Doc.fs](../client/Doc.fs)) — für eine Demo praktisch, weil
+kein zweites ID-Schema gebraucht wird, aber eben genau deshalb keine über Reloads oder mehrere
+Tabs hinweg stabile "das ist Harald"-Identität. Für eine echte Anwendung mit Login gehört hier
+die eigene Auth-User-ID hin, getrennt von der (flüchtigen, pro Verbindung neuen) Yjs-Client-ID
+gehalten und nur über Awareness mit ihr verknüpft.
+
+Damit ergeben sich in Wahrheit **drei** Schichten, nicht zwei:
+
+| Schicht | Beispiel | Lebensdauer |
+|---|---|---|
+| Dokumentzustand (Yjs) | Notizen, Text, Undo-Historie | dauerhaft, an Client-IDs gebunden |
+| Awareness | Cursor, "wer tippt gerade wo" | flüchtig, verschwindet mit der Verbindung |
+| Nutzeridentität | Name, Avatar, Auth-Konto | eigene Sache der Anwendung — oft die stabilste von allen drei |
+
+## 8. Ansichten auf geteilte Elemente: Kopien ohne echte Kopien
+
+Ein Szenario, das über die bisherigen Beispiele hinausgeht: ein Unterdiagramm, das aus einem
+größeren Diagramm "herauskopiert" wurde, soll trotzdem wechselseitig Änderungen mit dem
+Original teilen — bearbeitet man ein Element im Unterdiagramm, soll sich das im Hauptdiagramm
+genauso zeigen, und umgekehrt.
+
+Die Lösung ist eine direkte Konsequenz desselben Prinzips wie bei den Verbindungspfeilen in
+[Punkt 6](#6-mehrere-ui-oberflächen-ein-dokument): das Unterdiagramm ist **keine Kopie der
+Elemente**, sondern eine **zweite Liste von Referenzen auf dieselben Elemente**:
+
+```
+elements:  Y.Map<id, ElementData>       -- die eigentlichen, geteilten Objekte
+views:
+  main:    Y.Array<id>                  -- welche Elemente im Hauptdiagramm sichtbar sind
+  sub:     Y.Array<id>                  -- welche Elemente im Unterdiagramm sichtbar sind
+```
+
+Da `main` und `sub` nur IDs referenzieren, nicht die Objekte selbst enthalten, bearbeiten beide
+Ansichten *dasselbe* `Y.Map`-Objekt unter derselben ID — eine Änderung ist damit automatisch in
+beiden Ansichten sichtbar, ganz ohne eigene Synchronisationslogik dafür.
+
+**Komplizierter wird es**, wenn manche Eigenschaften wirklich geteilt sein sollen (Name, Typ,
+Fachdaten), andere aber pro Ansicht unterschiedlich sein dürfen (Position, Größe, individuelle
+Routing-Hinweise für genau diese Darstellung). Dann lohnt sich, das Element selbst genau an
+dieser Grenze zu splitten:
+
+```
+elements:
+  4711:
+    shared:  Y.Map        -- name, type, Fachdaten - für alle Ansichten identisch
+viewOverrides:
+  main:
+    4711:  Y.Map          -- position, size, routing-hints - nur für diese Ansicht
+  sub:
+    4711:  Y.Map          -- eigene position/size für diese Ansicht
+```
+
+Damit lässt sich präzise ausdrücken, was "dasselbe Ding an zwei Stellen" bedeutet, ohne echte
+Duplikate zu erzeugen oder eine eigene Kopier-/Sync-Logik dafür zu bauen — man modelliert nur,
+was geteilt ist und was nicht, der Rest ergibt sich aus der Struktur selbst.

@@ -35,10 +35,16 @@ non-.NET artifact in the repo is one vendored, dependency-free copy of `yjs.mjs`
 - **Presence/"follow" works across different window sizes** because cursor
   positions are broadcast in *world* (canvas) coordinates, never screen pixels -
   see [`client/Camera.fs`](client/Camera.fs).
+- **Multi-user-aware undo/redo, essentially for free.** `Y.UndoManager` only ever
+  undoes *your own* last change, correctly, even if someone else edited the same
+  note in the meantime - no lock, no lease/timeout machinery, nothing that can
+  get stuck if a connection drops mid-edit. See [`client/Doc.fs`](client/Doc.fs)
+  and [`docs/01-crdt-und-yjs.md`](docs/01-crdt-und-yjs.md#server-seitiges-locking-der-preis-der-zuverlässigkeit)
+  for what building this by hand would actually cost.
 - **You can watch every byte move.** A live debug panel (and the browser/server
   consoles) show every WebSocket frame - direction, kind, size/content - as it
   happens. This is the whole point of a demo: you shouldn't have to take it on
-  faith.
+  faith. (Console mirroring is opt-in, off by default - see "Running it" below.)
 
 ## Architecture
 
@@ -61,10 +67,10 @@ non-.NET artifact in the repo is one vendored, dependency-free copy of `yjs.mjs`
   order, any number of times, that's sufficient for a late joiner's `Y.Doc` to
   converge to the same state as everyone else's - no custom sync protocol needed.
 - **Text WebSocket frames** carry small, human-readable JSON: `{"type":"presence",
-  "id":…, "name":…, "color":…, "cursor":{"x":…,"y":…}}` or `{"type":"bye","id":…}`.
-  These are relayed live only (never logged/replayed) - presence is ephemeral by
-  nature, and keeping it as plain JSON (instead of squeezing it through Yjs too)
-  makes it easy to eyeball in the debug panel.
+  "id":…, "name":…, "color":…, "cursor":{"x":…,"y":…}, "editing":{"noteId":…,"field":…}}`
+  or `{"type":"bye","id":…}`. These are relayed live only (never logged/replayed) -
+  presence is ephemeral by nature, and keeping it as plain JSON (instead of
+  squeezing it through Yjs too) makes it easy to eyeball in the debug panel.
 
 ## What's actually Yjs, and what isn't?
 
@@ -106,14 +112,14 @@ server/                  ASP.NET Core F# app (the whole "CRDT server")
 
 client/                  F# Fable project, MVU via Elmish
   Types.fs                Model / Msg / all shared value types
-  Awareness.fs            JSON encode/decode for the presence protocol
+  Awareness.fs            JSON encode/decode for presence + "who's editing what field"
   Interop/Yjs.fs          the ONLY file that touches the real Yjs JS API
   Interop/Ws.fs           minimal WebSocket wrapper
-  Doc.fs                  sticky-note shape on top of Yjs + the socket wiring
+  Doc.fs                  note shape on top of Yjs (incl. title/description/undo) + socket wiring
   Camera.fs               screen <-> world coordinate math (pan/zoom/follow)
   Canvas.fs               all <canvas> drawing + hit-testing
   State.fs                Elmish `init`/`update` - the MVU core
-  View.fs                 DOM shell (presence bar, toolbar, debug panel, edit overlay)
+  View.fs                 DOM shell (presence bar, toolbar, debug panel, note panel, edit overlay)
   Program.fs              entry point
 
 dotnet-tools.json         local tool manifest (pins the `fable` CLI)
@@ -144,6 +150,12 @@ watch mode wired up, this is a prototype.
 > build) with one dead `import "/node/process.mjs"` stubbed out by hand. It's
 > checked in - nothing fetches it at build or run time.
 
+> Mirroring the debug panel's traffic into the browser console is **off by
+> default** - with DevTools actually open across several windows at once, the
+> unbounded console log retention becomes a real, whole-machine performance
+> problem, not just a tab-level one. Tick "auch in Browser-Konsole spiegeln" in
+> the debug panel header if you specifically want it for a demo.
+
 ## Suggested demo script
 
 1. Open two windows side by side. Rename yourself in each (top-left input) -
@@ -156,14 +168,22 @@ watch mode wired up, this is a prototype.
    time - both sets of keystrokes land, nothing is lost. Point at the
    `note-edit` debug entries: each is a minimal insert/delete, not a full
    rewrite, so two people typing in different parts of the note never conflict.
-5. Resize/zoom one window differently from the other, then click the other
+5. Single-click the note to open its detail panel (title + description).
+   Start typing the description in window A while window B has the same note
+   selected - a small "X is typing here…" badge appears next to the field in
+   window B, live, without either field being locked for editing.
+6. In window A, drag the note somewhere else, then press **Ctrl+Z**. It jumps
+   back - but if window B made an unrelated change in the meantime (add a
+   note, edit another field), that change is untouched. Undo only ever
+   reverts *your own* last change, never someone else's.
+7. Resize/zoom one window differently from the other, then click the other
    person's avatar in the presence bar to follow them - your camera keeps
    their cursor centered regardless of the size/zoom mismatch. Click again to
    stop.
-6. Open a third window as a "late joiner" - it receives the whole board
+8. Open a third window as a "late joiner" - it receives the whole board
    instantly via the server's replay log, not by asking any other client for
    it.
-7. Open the server's own console: every relayed frame is logged there too,
+9. Open the server's own console: every relayed frame is logged there too,
    independent of what any browser is doing - this is the server-side half of
    "you can watch every byte move".
 

@@ -18,7 +18,8 @@ lauffähigen Prototyp im Repo-Wurzelverzeichnis ([../README.md](../README.md)) a
 2. **[Architektur-Muster](02-architektur-muster.md)**
    Die übertragbaren Bausteine: Zwei-Kanal-Prinzip (Dokument vs. Awareness), der Server als
    "dummer Relay", Dokumentstruktur, Integration in ein UI-Framework, Weltkoordinaten für
-   geteilte Cursor.
+   geteilte Cursor, mehrere UI-Oberflächen auf einem Dokument, Nutzeridentität vs.
+   Yjs-Client-ID, Ansichten auf geteilte Elemente (Kopien ohne echte Kopien).
 
 3. **[Fallstricke & Lessons Learned](03-fallstricke.md)**
    Was beim Einbau typischerweise schiefgeht (inkl. echter Bugs aus diesem Projekt), wo die
