@@ -3,6 +3,8 @@
 A small, deliberately "clean" prototype that answers one question: **is Yjs a good
 fit for real-time collaboration in an F# stack?**
 
+<p align="center"><img src="assets/screen.png" width="300" /></p>
+
 Several people can move around one HTML `<canvas>` together, dropping colored
 sticky notes, dragging them, and typing into them *at the same time* - with the
 CRDT (Yjs) doing all the merge work. A presence bar shows who's online, and
